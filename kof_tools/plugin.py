@@ -11,6 +11,7 @@ from .processing.provider import KofProvider
 MENU = "&KOF Tools"
 ICON = str(Path(__file__).parent / "icon.svg")
 EXPORT_ALGORITHM_ID = "kof:exportkof"
+EXPORT_LAYERS_ALGORITHM_ID = "kof:exportkoflayers"
 # The plugin's name before 1.2.0. It registers a provider with the same id,
 # so only one of the two can provide the KOF algorithms.
 OLD_PLUGIN = "kof_import"
@@ -21,6 +22,7 @@ class KofToolsPlugin:
         self.iface = iface
         self.action = None
         self.export_action = None
+        self.export_layers_action = None
         self.provider = None
         self.drop_handler = None
 
@@ -39,6 +41,9 @@ class KofToolsPlugin:
         self.export_action = QAction(tr("Export to KOF…"), self.iface.mainWindow())
         self.export_action.triggered.connect(self.run_export)
         self.iface.addPluginToVectorMenu(MENU, self.export_action)
+        self.export_layers_action = QAction(tr("Export layers to KOF…"), self.iface.mainWindow())
+        self.export_layers_action.triggered.connect(self.run_export_layers)
+        self.iface.addPluginToVectorMenu(MENU, self.export_layers_action)
         self.drop_handler = KofDropHandler(self.iface)
         self.iface.registerCustomDropHandler(self.drop_handler)
         self._warn_old_plugin()
@@ -65,6 +70,9 @@ class KofToolsPlugin:
         if self.export_action:
             self.iface.removePluginVectorMenu(MENU, self.export_action)
             self.export_action = None
+        if self.export_layers_action:
+            self.iface.removePluginVectorMenu(MENU, self.export_layers_action)
+            self.export_layers_action = None
         if self.drop_handler:
             self.iface.unregisterCustomDropHandler(self.drop_handler)
             self.drop_handler = None
@@ -86,3 +94,14 @@ class KofToolsPlugin:
         if isinstance(layer, QgsVectorLayer) and layer.isSpatial():
             params["INPUT"] = layer
         processing.execAlgorithmDialog(EXPORT_ALGORITHM_ID, params)
+
+    def run_export_layers(self):
+        import processing
+
+        # Start with the selected layers in the layers panel that have geometry.
+        layers = [
+            layer for layer in self.iface.layerTreeView().selectedLayers()
+            if isinstance(layer, QgsVectorLayer) and layer.isSpatial()
+        ]
+        params = {"LAYERS": layers} if layers else {}
+        processing.execAlgorithmDialog(EXPORT_LAYERS_ALGORITHM_ID, params)

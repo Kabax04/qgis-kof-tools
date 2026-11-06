@@ -8,6 +8,7 @@ version=1.5.0
 author=Jonas Bratland
 email=qgis@jonasbratland.com
 changelog=1.5.0
+    - Export several layers to one KOF file (Vector > KOF Tools > Export layers to KOF…), e.g. the point, line and polygon layers of an import, with every point once
     - Repeated measurements are only merged when the heights agree within 10 cm by default, so the lid and bottom of a manhole stay apart
     - Grouping of repeated measurements is much faster on long surveys and can be cancelled
     - Export numbers points with an empty name and uses Z when the height is empty; numbers already used as names are skipped

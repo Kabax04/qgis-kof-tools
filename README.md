@@ -32,7 +32,8 @@ QGIS language setting.
   comments and files with irregular columns or tabs.
 - **Export** of point, line and polygon layers to KOF, with the coordinate
   system code in the `01` block, optional transformation, and warnings for
-  values that do not fit the KOF columns. Lines and polygons become `09` blocks.
+  values that do not fit the KOF columns. Lines and polygons become `09` blocks,
+  and several layers can be written to one file.
 
 ## Installation
 
@@ -84,7 +85,14 @@ Lines are written as `09 91` … `09 99` and polygons as `09 91` … `09 96`.
 The vertices take their names from the `points` field that the import writes
 in its line layers, or are numbered. Arcs from the import (`type` = `arc`)
 are written back as `09 93` with their measured points only. Other curves are
-segmented into straight `91` lines.
+segmented into straight `91` lines, with a warning.
+
+To write several layers to one file, for example the point, line and polygon
+layers of an import, select them in the layers panel and choose **Vector → KOF
+Tools → Export layers to KOF…** (the *Export layers to one KOF file* algorithm).
+The fields are found by the names the import uses. Points that are also points
+of an exported line or polygon (same name and position) are written only in its
+`09` block, so a whole import comes back as one file with every point once.
 
 ### Layers and fields
 
