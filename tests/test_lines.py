@@ -107,3 +107,33 @@ def test_slaatt_av_09_ignoreres():
     result = parse_lines(["-09 91", p("1", 0, 0), p("2", 0, 10), "-09 99"])
     assert result.lines == []
     assert result.disabled == 2
+
+
+def test_bue_gaar_gjennom_maalte_punkter_paa_sirkelen(spec):
+    import math
+
+    from kof_tools.kof_lines import ARC_SEGMENTS, arc_vertices, measured_arc_step
+
+    for arc in [line for line in spec.lines if line.kind == "arc"]:
+        vertices = arc_vertices(arc.points)
+        assert len(vertices) == ARC_SEGMENTS * (len(arc.points) - 1) + 1
+        step = measured_arc_step(len(vertices), len(arc.points))
+        assert [v[:2] for v in vertices[::step]] == [(pt.east, pt.north) for pt in arc.points]
+        # The first piece lies on the circle through the first three points.
+        a, b, c = arc.points[:3]
+        d = 2 * ((b.east - a.east) * (c.north - a.north) - (b.north - a.north) * (c.east - a.east))
+        sq = [pt.east ** 2 + pt.north ** 2 for pt in (a, b, c)]
+        ux = (sq[0] * (b.north - c.north) + sq[1] * (c.north - a.north) + sq[2] * (a.north - b.north)) / d
+        uy = (sq[0] * (c.east - b.east) + sq[1] * (a.east - c.east) + sq[2] * (b.east - a.east)) / d
+        radius = math.hypot(a.east - ux, a.north - uy)
+        for x, y, _ in vertices[:2 * ARC_SEGMENTS + 1]:
+            assert math.hypot(x - ux, y - uy) == pytest.approx(radius)
+
+
+def test_bue_med_rette_punkter_blir_rett_linje():
+    from kof_tools.kof_lines import arc_vertices
+
+    result = parse_lines([" 09 93", p("1", 0, 0), p("2", 0, 10), p("3", 0, 20), " 09 99"])
+    vertices = arc_vertices(result.lines[0].points)
+    assert all(y == pytest.approx(0) for _, y, _ in vertices)
+    assert [x for x, _, _ in vertices] == sorted(x for x, _, _ in vertices)

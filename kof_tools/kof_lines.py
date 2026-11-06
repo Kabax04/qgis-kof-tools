@@ -16,8 +16,9 @@ do not affect lines and are ignored here.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from .i18n import tr
 
@@ -29,6 +30,11 @@ SWARM = 94
 CLOSE = 96
 END = 99
 SINGLE_POINT_BK = 37
+
+# Arcs are drawn with this many straight pieces between each pair of
+# measured points. Being fixed, it lets the export find the measured points
+# again among the vertices: every ARC_SEGMENTS-th vertex is one.
+ARC_SEGMENTS = 16
 
 
 @dataclass
@@ -133,3 +139,68 @@ class LineTracker:
         self._active = []
         self._pi = None
         self._count = 0
+
+
+def arc_vertices(points: "List[KofPoint]") -> List[Tuple[float, float, Optional[float]]]:
+    """(east, north, height) along a circular arc (09 93) through the points.
+
+    As in the specification the points go start, mid, end, mid, end, ...;
+    each three consecutive points from the start give one circle. With an
+    even number of points the last piece follows the circle through the last
+    three. Each piece between two measured points becomes ARC_SEGMENTS
+    straight pieces, so the measured points are every ARC_SEGMENTS-th
+    vertex. Heights are interpolated along each piece. Three points on a
+    straight line give a straight piece.
+    """
+    n = len(points)
+    vertices = [(points[0].east, points[0].north, points[0].height)]
+    for j in range(n - 1):
+        first = min(2 * (j // 2), n - 3)
+        a, b, c = points[first:first + 3]
+        vertices.extend(_arc_piece(points[j], points[j + 1], a, b, c)[1:])
+    return vertices
+
+
+def _arc_piece(p, q, a, b, c):
+    """Vertices from p to q along the circle through a, b and c."""
+    ax, ay, bx, by, cx, cy = a.east, a.north, b.east, b.north, c.east, c.north
+    cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+    d = 2 * cross
+    span = max(math.hypot(bx - ax, by - ay), math.hypot(cx - bx, cy - by), math.hypot(cx - ax, cy - ay))
+    straight = span == 0 or abs(cross) <= 1e-12 * span * span
+    if not straight:
+        ux = ((ax * ax + ay * ay) * (by - cy) + (bx * bx + by * by) * (cy - ay) + (cx * cx + cy * cy) * (ay - by)) / d
+        uy = ((ax * ax + ay * ay) * (cx - bx) + (bx * bx + by * by) * (ax - cx) + (cx * cx + cy * cy) * (bx - ax)) / d
+        radius = math.hypot(p.east - ux, p.north - uy)
+        start = math.atan2(p.north - uy, p.east - ux)
+        end = math.atan2(q.north - uy, q.east - ux)
+        # Counter-clockwise when a, b, c turn left.
+        sweep = (end - start) % (2 * math.pi) if cross > 0 else -((start - end) % (2 * math.pi))
+    vertices = []
+    for k in range(ARC_SEGMENTS + 1):
+        t = k / ARC_SEGMENTS
+        if k == 0:
+            x, y = p.east, p.north
+        elif k == ARC_SEGMENTS:
+            x, y = q.east, q.north
+        elif straight:
+            x, y = p.east + t * (q.east - p.east), p.north + t * (q.north - p.north)
+        else:
+            angle = start + t * sweep
+            x, y = ux + radius * math.cos(angle), uy + radius * math.sin(angle)
+        if p.height is None or q.height is None:
+            z = None if k not in (0, ARC_SEGMENTS) else (p.height if k == 0 else q.height)
+        else:
+            z = p.height + t * (q.height - p.height)
+        vertices.append((x, y, z))
+    return vertices
+
+
+def measured_arc_step(vertex_count: int, point_count: int) -> Optional[int]:
+    """The step between measured points in an arc made by arc_vertices, or None.
+
+    Lets the export write an imported arc with its measured points only.
+    """
+    if point_count >= 3 and vertex_count - 1 == ARC_SEGMENTS * (point_count - 1):
+        return ARC_SEGMENTS
+    return None

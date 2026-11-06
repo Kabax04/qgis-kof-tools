@@ -79,7 +79,9 @@ def test_missing_coordinates_give_warnings():
 def test_tabs():
     result = parse_file(NGI / "kof-with-tabs.kof")
     assert [(p.name, p.north, p.east) for p in result.points][1] == ("15", 7023231.981, 599001.246)
-    assert result.warnings == []
+    # Tabs break the columns, so the points are read word by word, with one warning.
+    (warning,) = result.warnings
+    assert warning.startswith("3 point(s) do not follow the KOF columns")
 
 
 def test_09_free_text_from_instrument():

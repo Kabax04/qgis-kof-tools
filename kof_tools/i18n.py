@@ -74,7 +74,8 @@ EN = {
         "a height field the Z value of the geometry is used.\n\n"
         "Lines and polygons: the vertices take their names from the comma-separated point names field when it "
         "has one name per vertex, otherwise they are numbered. Heights come from Z, and the code applies to "
-        "every vertex. Curves are segmented, multipart features give one block per part, and polygon holes "
+        "every vertex. Arcs from the import are written back as 09 93 with their measured points. Other "
+        "curves are segmented, multipart features give one block per part, and polygon holes "
         "become polygons of their own.\n\n"
         "The points are transformed to the selected coordinate reference system, or written in the layer's. "
         "KOF holds projected coordinates, so geographic systems (latitude and longitude) are not accepted.\n\n"
@@ -169,7 +170,8 @@ NB = {
         "Z-verdien i geometrien.\n\n"
         "Linjer og flater: knekkpunktene får navn fra feltet med kommadelte punktnavn når det har ett navn "
         "per knekkpunkt, ellers nummereres de. Høydene hentes fra Z, og koden gjelder alle knekkpunktene. "
-        "Kurver deles opp i rette linjer, objekter med flere deler gir én blokk per del, og hull i flater "
+        "Buer fra importen skrives tilbake som 09 93 med de målte punktene. Andre kurver deles opp i rette "
+        "linjer, objekter med flere deler gir én blokk per del, og hull i flater "
         "blir egne flater.\n\n"
         "Punktene transformeres til valgt koordinatsystem, eller skrives i lagets. KOF har projiserte "
         "koordinater, så geografiske systemer (bredde og lengde) godtas ikke.\n\n"
@@ -181,6 +183,8 @@ NB = {
     # Parser
     "Line {line_no}: could not read point: {text}": "Linje {line_no}: kunne ikke lese punkt: {text}",
     "Line {line_no}: point {name} is missing north or east coordinate, ignored": "Linje {line_no}: punkt {name} mangler nord- eller østkoordinat, ignorert",
+    "Line {line_no}: point {name} has irregular columns, and its code and coordinates cannot be told apart, ignored: {text}": "Linje {line_no}: punkt {name} har uregelmessige kolonner, og kode og koordinater kan ikke skilles fra hverandre, ignorert: {text}",
+    "{count} point(s) do not follow the KOF columns and were read word by word. Check their code and coordinates. First at line {line_no}.": "{count} punkt(er) følger ikke KOF-kolonnene og ble lest ord for ord. Kontroller kode og koordinater. Første gang på linje {line_no}.",
     "Line {line_no}: unknown record type {record}, ignored": "Linje {line_no}: ukjent postkode {record}, ignorert",
     "Line {line_no}: radius (08 141) is not supported, drawn as a straight line": "Linje {line_no}: radius (08 141) støttes ikke, tegnes som rett linje",
     # GNSS vectors

@@ -10,7 +10,6 @@ from typing import Iterator, List, Optional
 
 from qgis.core import (
     Qgis,
-    QgsCircularString,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
     QgsLineString,
@@ -19,7 +18,6 @@ from qgis.core import (
     QgsField,
     QgsFields,
     QgsGeometry,
-    QgsGeometryUtils,
     QgsPoint,
     QgsPointXY,
     QgsProject,
@@ -27,7 +25,7 @@ from qgis.core import (
 )
 
 from .duplicates import PointGroup
-from .kof_lines import KofLine
+from .kof_lines import KofLine, arc_vertices
 from .kof_parser import KofResult
 from .kof_vectors import KofVector, ecef_to_geodetic
 
@@ -143,29 +141,14 @@ def _vertex(p) -> QgsPoint:
 
 
 def line_geometry(line: KofLine) -> QgsGeometry:
-    """LineStringZ through the points. Arcs (09 93) become a segmented circular arc.
-
-    A circular string in QGIS needs an odd number of points (start, mid, end,
-    mid, end, ...). With an even number, the arc follows all but the last
-    point, and the last piece is drawn as an arc around the centre of the
-    last three points.
+    """LineStringZ through the points. Arcs (09 93) are drawn as a segmented
+    circular arc that passes through every measured point, see arc_vertices.
     """
-    vertices = [_vertex(p) for p in line.points]
-    if line.kind != "arc" or len(vertices) < 3:
-        return QgsGeometry(QgsLineString(vertices))
-    arc_vertices = vertices if len(vertices) % 2 else vertices[:-1]
-    arc = QgsCircularString()
-    arc.setPoints(arc_vertices)
-    segmented = arc.curveToLine()
-    if len(arc_vertices) < len(vertices):
-        a, b, c = vertices[-3:]
-        _, cx, cy = QgsGeometryUtils.circleCenterRadius(a, b, c)
-        tail = QgsCircularString.fromTwoPointsAndCenter(b, c, QgsPoint(cx, cy), True)
-        for vertex in list(tail.curveToLine().vertices())[1:]:
-            segmented.addVertex(vertex)
-        # The end point must be the measured point, with its height.
-        segmented.setZAt(segmented.numPoints() - 1, c.z())
-    return QgsGeometry(segmented)
+    if line.kind != "arc" or len(line.points) < 3:
+        return QgsGeometry(QgsLineString([_vertex(p) for p in line.points]))
+    return QgsGeometry(QgsLineString([
+        QgsPoint(x, y, z if z is not None else float("nan")) for x, y, z in arc_vertices(line.points)
+    ]))
 
 
 def polygon_geometry(line: KofLine) -> QgsGeometry:

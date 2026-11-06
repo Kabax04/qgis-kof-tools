@@ -15,6 +15,7 @@ from qgis.core import (
 
 from ..crs_detect import sosi_code_from_epsg
 from ..i18n import tr
+from ..kof_lines import measured_arc_step
 from ..kof_writer import KofWriter
 
 # QGIS 3.36 moved these enums to Qgis. QGIS 4 (Qt6) only has the scoped names.
@@ -177,6 +178,8 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
             if name and index < 0:
                 feedback.pushInfo(tr("The layer has no field {field}, not used", field=name))
             indexes[key] = index
+        # Set by the import: "arc" for lines from 09 93.
+        indexes["type"] = fields.lookupField("type")
 
         writer = KofWriter()
         writer.comment(f"Exported from QGIS {Qgis.version()} with KOF Tools")
@@ -251,13 +254,21 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
 
         The point names are taken from the vertex names field (as made by the
         import) when it has one name per vertex; otherwise the points are numbered.
+        An arc from the import is written back as 09 93 with its measured
+        points only, not the vertices it was drawn with.
         """
         code = _text(_value(feature, indexes[self.CODE_FIELD]))
         remark = _text(_value(feature, indexes[self.REMARK_FIELD]))
         names = [n.strip() for n in _text(_value(feature, indexes[self.VERTEX_NAMES_FIELD])).split(",")]
+        pi = 91
         if len(names) != len(vertices):
-            names = [self._next_name() for _ in vertices]
-        writer.start_line()
+            is_arc = not closed and _value(feature, indexes["type"]) == "arc"
+            step = measured_arc_step(len(vertices), len(names)) if is_arc else None
+            if step:
+                vertices, pi = vertices[::step], 93
+            else:
+                names = [self._next_name() for _ in vertices]
+        writer.start_line(pi)
         for i, (name, vertex) in enumerate(zip(names, vertices)):
             writer.point(
                 name, code, vertex.y(), vertex.x(), vertex.z() if vertex.is3D() else None,

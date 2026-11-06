@@ -2,6 +2,16 @@
 
 Entries before 1.0.0 are in Norwegian.
 
+## [1.4.1] – 2026-11-06
+
+### Fixed
+- A `05` record that does not follow the KOF columns (tabs, shifted fields) is no longer misread. Before, a point with a numeric code and no height, such as `100 2000 6615798.981 599667.952`, got the code as north and the north as height. The words are now read so that numbers before north must be a whole-number code, a height must be below 10 000 and a calculation code may follow the height; text after the numbers becomes the remark. A line that fits more than one reading is skipped with a warning instead of guessed, and one warning tells how many points were read this way.
+- Files where the record type is not in column 2–3 (no blank first column, or more indentation) are read in the right columns. Before, point names and codes were cut short, e.g. `100` became `00`.
+- Arcs (`09 93`) from the import are exported back as `09 93` with their measured points and names. Before, every vertex of the drawn arc became a numbered `05` record, so a three-point arc came out as almost 200 points.
+
+### Changed
+- Imported arcs are drawn with 16 straight pieces between each pair of measured points, so the export can find the measured points again.
+
 ## [1.4.0] – 2026-11-06
 
 ### Added
