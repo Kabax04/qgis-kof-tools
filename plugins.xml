@@ -1,26 +1,39 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <plugins>
-    <pyqgis_plugin name="KOF Tools" version="1.4.1">
+    <pyqgis_plugin name="KOF Tools" version="1.5.0">
         <description>Import KOF survey files (the Norwegian coordinate file format) as points, lines and polygons, and export point, line and polygon layers to KOF.</description>
         <about>KOF is the coordinate file format used by Norwegian surveying instruments and software (Norkart KOF specification 2.00). The plugin reads points (05 records), lines and polygons (09 blocks), GNSS vectors (42/43 records) and the file header, detects the coordinate reference system (EUREF89 UTM and NTM, NGO1948, ED50, WGS84 UTM and more) and checks the axis order. Repeated measurements of the same point can be merged into mean points with standard deviations. Point, line and polygon layers can be exported to KOF files, with the coordinate system code in the header. Use it from Vector &gt; KOF Tools, the Processing toolbox, or by dragging a .kof file onto the map. The user interface is available in English and Norwegian.</about>
-        <version>1.4.1</version>
+        <version>1.5.0</version>
         <qgis_minimum_version>3.22</qgis_minimum_version>
         <qgis_maximum_version>4.99</qgis_maximum_version>
         <homepage>https://github.com/Kabax04/qgis-kof-tools</homepage>
-        <file_name>kof_tools.1.4.1.zip</file_name>
-        <icon>https://raw.githubusercontent.com/Kabax04/qgis-kof-tools/v1.4.1/kof_tools/icon.svg</icon>
+        <file_name>kof_tools.1.5.0.zip</file_name>
+        <icon>https://raw.githubusercontent.com/Kabax04/qgis-kof-tools/v1.5.0/kof_tools/icon.svg</icon>
         <author_name>Jonas Bratland</author_name>
-        <download_url>https://github.com/Kabax04/qgis-kof-tools/releases/download/v1.4.1/kof_tools.1.4.1.zip</download_url>
+        <download_url>https://github.com/Kabax04/qgis-kof-tools/releases/download/v1.5.0/kof_tools.1.5.0.zip</download_url>
         <uploaded_by>Jonas Bratland</uploaded_by>
         <create_date>2026-10-29T18:32:06+01:00</create_date>
-        <update_date>2026-11-06T15:30:06+01:00</update_date>
+        <update_date>2026-11-06T15:54:21+01:00</update_date>
         <experimental>False</experimental>
         <deprecated>False</deprecated>
         <tracker>https://github.com/Kabax04/qgis-kof-tools/issues</tracker>
         <repository>https://github.com/Kabax04/qgis-kof-tools</repository>
         <tags>kof,survey,surveying,import,export,gnss,gnss vectors,baselines,total station,norway,coordinates,points,lines</tags>
         <category>Vector</category>
-        <changelog>1.4.1
+        <changelog>1.5.0
+- Export several layers to one KOF file (Vector &gt; KOF Tools &gt; Export layers to KOF…), e.g. the point, line and polygon layers of an import, with every point once
+- Repeated measurements are only merged when the heights agree within 10 cm by default, so the lid and bottom of a manhole stay apart
+- Grouping of repeated measurements is much faster on long surveys and can be cancelled
+- Export numbers points with an empty name and uses Z when the height is empty; numbers already used as names are skipped
+- '!' in point names and codes is replaced on export, so the points are not lost when the file is read again
+- Warns when the old KOF Import plugin is still installed
+- Many lines of the same unknown record type give one warning
+- Files with only GNSS vectors in western Norway or Svalbard get the right UTM zone
+- DOS files (CP865/CP850) and UTF-16 files are read with the right letters
+- The import log shows the file header (01) and the comments (00)
+- Export warns when curves are written as straight lines
+- Exporting from QGIS 3.22 no longer writes a '?' in the first line of the file
+1.4.1
 - Points with irregular columns are no longer misread: an ambiguous code and coordinates are reported instead of guessed, and a warning says how many points were read word by word
 - Files without the blank first column, or indented further, are read in the right columns, so point names and codes are no longer cut short
 - Arcs (09 93) from the import are exported as 09 93 with their measured points, instead of hundreds of numbered vertices
