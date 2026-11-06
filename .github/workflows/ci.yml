@@ -38,7 +38,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install pytest
-        run: python3 -m pytest --version || (apt-get update && apt-get install -y python3-pytest)
+        # Old images have apt sources that no longer exist, so a failed update is not fatal.
+        run: |
+          python3 -m pytest --version && exit 0
+          python3 -m pip install pytest && exit 0
+          apt-get update || true
+          apt-get install -y python3-pytest
       - name: QGIS version
         run: python3 -c "from qgis.core import Qgis; print(Qgis.version())"
       # The release tests need the git history and run in the job above.
