@@ -1,26 +1,29 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <plugins>
-    <pyqgis_plugin name="KOF Tools" version="1.3.1">
+    <pyqgis_plugin name="KOF Tools" version="1.4.0">
         <description>Import KOF survey files (the Norwegian coordinate file format) as points, lines and polygons, and export point, line and polygon layers to KOF.</description>
-        <about>KOF is the coordinate file format used by Norwegian surveying instruments and software (Norkart KOF specification 2.00). The plugin reads points (05 records), lines and polygons (09 blocks) and the file header, detects the coordinate reference system (EUREF89 UTM and NTM, NGO1948, ED50, WGS84 UTM and more) and checks the axis order. Repeated measurements of the same point can be merged into mean points with standard deviations. Point, line and polygon layers can be exported to KOF files, with the coordinate system code in the header. Use it from Vector &gt; KOF Tools, the Processing toolbox, or by dragging a .kof file onto the map. The user interface is available in English and Norwegian.</about>
-        <version>1.3.1</version>
+        <about>KOF is the coordinate file format used by Norwegian surveying instruments and software (Norkart KOF specification 2.00). The plugin reads points (05 records), lines and polygons (09 blocks), GNSS vectors (42/43 records) and the file header, detects the coordinate reference system (EUREF89 UTM and NTM, NGO1948, ED50, WGS84 UTM and more) and checks the axis order. Repeated measurements of the same point can be merged into mean points with standard deviations. Point, line and polygon layers can be exported to KOF files, with the coordinate system code in the header. Use it from Vector &gt; KOF Tools, the Processing toolbox, or by dragging a .kof file onto the map. The user interface is available in English and Norwegian.</about>
+        <version>1.4.0</version>
         <qgis_minimum_version>3.22</qgis_minimum_version>
         <qgis_maximum_version>4.99</qgis_maximum_version>
         <homepage>https://github.com/Kabax04/qgis-kof-tools</homepage>
-        <file_name>kof_tools.1.3.1.zip</file_name>
-        <icon>https://raw.githubusercontent.com/Kabax04/qgis-kof-tools/v1.3.1/kof_tools/icon.svg</icon>
+        <file_name>kof_tools.1.4.0.zip</file_name>
+        <icon>https://raw.githubusercontent.com/Kabax04/qgis-kof-tools/v1.4.0/kof_tools/icon.svg</icon>
         <author_name>Jonas Bratland</author_name>
-        <download_url>https://github.com/Kabax04/qgis-kof-tools/releases/download/v1.3.1/kof_tools.1.3.1.zip</download_url>
+        <download_url>https://github.com/Kabax04/qgis-kof-tools/releases/download/v1.4.0/kof_tools.1.4.0.zip</download_url>
         <uploaded_by>Jonas Bratland</uploaded_by>
         <create_date>2026-10-29T18:32:06+01:00</create_date>
-        <update_date>2026-10-31T12:50:54+01:00</update_date>
+        <update_date>2026-11-06T14:49:51+01:00</update_date>
         <experimental>False</experimental>
         <deprecated>False</deprecated>
         <tracker>https://github.com/Kabax04/qgis-kof-tools/issues</tracker>
         <repository>https://github.com/Kabax04/qgis-kof-tools</repository>
-        <tags>kof,survey,surveying,import,export,gnss,total station,norway,coordinates,points,lines</tags>
+        <tags>kof,survey,surveying,import,export,gnss,gnss vectors,baselines,total station,norway,coordinates,points,lines</tags>
         <category>Vector</category>
-        <changelog>1.3.1
+        <changelog>1.4.0
+- Import GNSS vectors (42/43/44/46 records, e.g. from Topcon MAGNET Tools) as a line layer
+- An unreadable point with tabs is reported as a warning instead of stopping the import
+1.3.1
 - Dropping a .kof file shows the real error when the import fails, and only opens the dialog when the file has no coordinate reference system
 - Exporting a layer without a coordinate reference system warns that the coordinates are written unchanged
 1.3.0
