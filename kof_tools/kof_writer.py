@@ -51,6 +51,14 @@ def _clean(text) -> str:
     return " ".join(str(text).replace("\t", " ").splitlines()).strip()
 
 
+def _no_comment(text: str, found: List[str]) -> str:
+    """"!" starts a comment in KOF, so a name or code with one would be cut there when read back."""
+    if "!" in text:
+        found.append(text)
+        return text.replace("!", "_")
+    return text
+
+
 def _number(value) -> Optional[float]:
     """The value as a float, or None if it is missing (None, NaN or not a number)."""
     if value is None:
@@ -86,6 +94,7 @@ class KofWriter:
         # Names of the points behind each kind of warning.
         self._long_names: List[str] = []
         self._long_codes: List[str] = []
+        self._exclamations: List[str] = []
         self._missing: List[str] = []
         self._too_large: List[str] = []
         self._height_too_large: List[str] = []
@@ -164,11 +173,11 @@ class KofWriter:
         remark="",
     ) -> bool:
         """Add a 05 record. Returns False if the point was skipped."""
-        name = _clean(name)
+        name = _no_comment(_clean(name), self._exclamations)
         if len(name) > NAME_WIDTH:
             self._long_names.append(name)
             name = name[:NAME_WIDTH]
-        code = _clean(code)
+        code = _no_comment(_clean(code), self._exclamations)
         if len(code) > CODE_WIDTH:
             self._long_codes.append(code)
             code = code[:CODE_WIDTH]
@@ -220,6 +229,10 @@ class KofWriter:
             )),
             (self._long_codes, tr(
                 "{count} code(s) longer than 8 characters were shortened, e.g. {examples}"
+            )),
+            (self._exclamations, tr(
+                "{count} point name(s) or code(s) had '!', which starts a comment in KOF, "
+                "and it was replaced with '_', e.g. {examples}"
             )),
             (self._missing, tr(
                 "{count} point(s) without north or east coordinate were skipped, e.g. {examples}"

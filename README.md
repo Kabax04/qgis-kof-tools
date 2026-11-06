@@ -23,8 +23,10 @@ QGIS language setting.
   or `SRID: 25832`. You can always choose another CRS.
 - **Axis order** from the `01` block, with a check that corrects files where
   north and east are obviously swapped.
-- **Repeated measurements**: points within a tolerance (default 5 cm) are
-  merged into a mean layer with standard deviations and largest deviation.
+- **Repeated measurements**: points within a tolerance (default 5 cm) and a
+  height tolerance (default 10 cm) are merged into a mean layer with standard
+  deviations and largest deviation. The height tolerance keeps points above
+  each other apart, such as the lid and bottom of a manhole.
   Pairs just outside the tolerance are reported as warnings.
 - Handles Windows-1252 and UTF-8, disabled lines (`-` in column 1), `!`
   comments and files with irregular columns or tabs.
@@ -71,8 +73,10 @@ you can drop all the session files on the map to see the network.
 To export, select a point, line or polygon layer and choose **Vector → KOF Tools → Export to
 KOF…** (or the *Export to KOF file* algorithm in the Processing toolbox). The
 fields default to those of the import (`name`, `code`, `H`, `calc_code`,
-`remark`); for other layers, pick the fields to use. Without a name field the
-points are numbered, and without a height field the Z value is used. The file
+`remark`); for other layers, pick the fields to use. Points without a name
+(no name field, or an empty value) are numbered, skipping numbers already used
+as names in the layer, and points without a height value take Z from the
+geometry. The file
 is written in the layer's coordinate reference system unless you select
 another one, in Windows-1252 unless you choose UTF-8.
 

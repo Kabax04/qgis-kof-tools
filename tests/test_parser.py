@@ -226,3 +226,11 @@ def test_postkode_uten_blank_forste_kolonne(line):
 def test_01_hode_uten_blank_forste_kolonne():
     header = parse_lines(["01 Oppdrag      06112026   2      22      $11100000000 JB"]).header
     assert (header.job, header.crs_code, header.observer) == ("Oppdrag", 22, "JB")
+
+
+def test_mange_ukjente_poster_gir_en_advarsel_per_type():
+    result = parse_lines([" 03 a"] * 500 + [" 77 b"])
+    assert result.warnings == [
+        "500 lines with unknown record type '03' ignored, first at line 1",
+        "Line 501: unknown record type '77', ignored",
+    ]

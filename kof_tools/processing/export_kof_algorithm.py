@@ -36,17 +36,19 @@ else:
 ENCODINGS = (("Windows-1252", "cp1252"), ("UTF-8", "utf-8"))
 
 
-def _value(feature, index):
-    """The attribute, or None for NULL. Whole numbers stored as decimals lose the ".0"."""
-    if index < 0:
-        return None
-    value = feature.attribute(index)
+def _plain(value):
+    """The value, or None for NULL. Whole numbers stored as decimals lose the ".0"."""
     # QGIS 3 returns NULL as an invalid QVariant, QGIS 4 as None.
     if value is None or (hasattr(value, "isNull") and value.isNull()):
         return None
     if isinstance(value, float) and value.is_integer():
         return int(value)
     return value
+
+
+def _value(feature, index):
+    """The attribute, or None for NULL or a missing field (index -1)."""
+    return None if index < 0 else _plain(feature.attribute(index))
 
 
 def _text(value) -> str:
@@ -188,6 +190,7 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
         request = QgsFeatureRequest().setDestinationCrs(crs, context.transformContext())
         total = source.featureCount()
         self._number = 0
+        self._used = self._names_in_layer(source, indexes)
         holes = 0
         for current, feature in enumerate(source.getFeatures(request)):
             if feedback.isCanceled():
@@ -217,30 +220,44 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
             ))
         return {self.OUTPUT: path}
 
+    def _names_in_layer(self, source, indexes):
+        """Point names the layer already has, so numbered points do not take them."""
+        names = set()
+        index = indexes[self.NAME_FIELD]
+        if index >= 0:
+            names.update(_text(_plain(v)).strip() for v in source.uniqueValues(index))
+        index = indexes[self.VERTEX_NAMES_FIELD]
+        if index >= 0:
+            for value in source.uniqueValues(index):
+                names.update(n.strip() for n in _text(_plain(value)).split(","))
+        names.discard("")
+        return names
+
     def _next_name(self) -> str:
+        """The next number not used as a point name in the layer."""
         self._number += 1
+        while str(self._number) in self._used:
+            self._number += 1
         return str(self._number)
 
     def _write_points(self, writer, feature, indexes):
         """One 05 record per point. A multipoint gives one per part, all with the same name.
 
-        No geometry gives one record without coordinates, which the writer reports.
+        A point without a name (no name field, or NULL or empty) is numbered,
+        and one without a height value takes Z from the geometry. No geometry
+        gives one record without coordinates, which the writer reports.
         """
-        name = _text(_value(feature, indexes[self.NAME_FIELD]))
+        name = _text(_value(feature, indexes[self.NAME_FIELD])).strip()
         code = _text(_value(feature, indexes[self.CODE_FIELD]))
         bk = _value(feature, indexes[self.BK_FIELD])
         remark = _text(_value(feature, indexes[self.REMARK_FIELD]))
         vertices = list(feature.geometry().vertices()) if feature.hasGeometry() else []
         for vertex in vertices or [None]:
-            number = self._next_name()
-            if indexes[self.HEIGHT_FIELD] >= 0:
-                height = _value(feature, indexes[self.HEIGHT_FIELD])
-            elif vertex is not None and vertex.is3D():
+            height = _value(feature, indexes[self.HEIGHT_FIELD])
+            if height is None and vertex is not None and vertex.is3D():
                 height = vertex.z()
-            else:
-                height = None
             writer.point(
-                name if indexes[self.NAME_FIELD] >= 0 else number,
+                name or self._next_name(),
                 code,
                 vertex.y() if vertex is not None else None,
                 vertex.x() if vertex is not None else None,

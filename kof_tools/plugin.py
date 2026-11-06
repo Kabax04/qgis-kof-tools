@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from qgis.core import QgsApplication, QgsVectorLayer
+from qgis.core import Qgis, QgsApplication, QgsVectorLayer
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
@@ -11,6 +11,9 @@ from .processing.provider import KofProvider
 MENU = "&KOF Tools"
 ICON = str(Path(__file__).parent / "icon.svg")
 EXPORT_ALGORITHM_ID = "kof:exportkof"
+# The plugin's name before 1.2.0. It registers a provider with the same id,
+# so only one of the two can provide the KOF algorithms.
+OLD_PLUGIN = "kof_import"
 
 
 class KofToolsPlugin:
@@ -23,7 +26,9 @@ class KofToolsPlugin:
 
     def initProcessing(self):  # noqa: N802
         self.provider = KofProvider()
-        QgsApplication.processingRegistry().addProvider(self.provider)
+        if not QgsApplication.processingRegistry().addProvider(self.provider):
+            # Another provider has the id, most likely the old KOF Import plugin.
+            self.provider = None
 
     def initGui(self):  # noqa: N802
         self.initProcessing()
@@ -36,6 +41,21 @@ class KofToolsPlugin:
         self.iface.addPluginToVectorMenu(MENU, self.export_action)
         self.drop_handler = KofDropHandler(self.iface)
         self.iface.registerCustomDropHandler(self.drop_handler)
+        self._warn_old_plugin()
+
+    def _warn_old_plugin(self):
+        try:
+            from qgis.utils import active_plugins
+        except ImportError:
+            return
+        if OLD_PLUGIN in active_plugins or self.provider is None:
+            self.iface.messageBar().pushMessage(
+                "KOF Tools",
+                tr("The old KOF Import plugin is still installed, and the two cannot run together. "
+                   "Uninstall KOF Import in Plugins → Manage and Install Plugins, then restart QGIS."),
+                level=Qgis.MessageLevel.Warning,
+                duration=0,
+            )
 
     def unload(self):
         if self.action:

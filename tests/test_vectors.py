@@ -95,3 +95,19 @@ def test_utm_zone():
     assert utm_epsg(69.6, 30.0) == 25836
     assert utm_epsg(40.0, -74.0) == 32618
     assert utm_epsg(-33.9, 151.2) == 32756
+
+
+@pytest.mark.parametrize("lat, lon, epsg", [
+    (60.39, 5.32, 25832),   # Bergen: 32V is widened west to 3°
+    (58.97, 5.73, 25832),   # Stavanger
+    (56.5, 3.5, 25832),
+    (55.9, 5.0, 25831),     # south of 32V
+    (64.5, 5.0, 25831),     # north of 32V
+    (78.92, 11.93, 25833),  # Ny-Ålesund: Svalbard has no zone 32X
+    (78.22, 15.65, 25833),  # Longyearbyen
+    (79.0, 8.0, 25831),
+    (77.0, 25.0, 25835),
+    (80.0, 35.0, 25837),
+])
+def test_utm_sone_unntak_i_norge_og_svalbard(lat, lon, epsg):
+    assert utm_epsg(lat, lon) == epsg

@@ -174,6 +174,12 @@ def ecef_to_geodetic(x: float, y: float, z: float) -> Tuple[float, float, float]
 def utm_epsg(latitude: float, longitude: float) -> int:
     """EPSG code of the UTM zone for a position: ETRS89 (258zz) in zones 28-38, else WGS84."""
     zone = min(int((longitude + 180) // 6) + 1, 60)
+    # The exceptions to the 6° zones: 32V is widened to cover western Norway,
+    # and Svalbard (band X) uses the odd zones 31, 33, 35 and 37 only.
+    if 56 <= latitude < 64 and 3 <= longitude < 12:
+        zone = 32
+    elif 72 <= latitude < 84 and 0 <= longitude < 42:
+        zone = 31 if longitude < 9 else 33 if longitude < 21 else 35 if longitude < 33 else 37
     if latitude >= 0 and 28 <= zone <= 38:
         return 25800 + zone
     return (32600 if latitude >= 0 else 32700) + zone

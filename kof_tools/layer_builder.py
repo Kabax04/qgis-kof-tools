@@ -12,6 +12,7 @@ from qgis.core import (
     Qgis,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransform,
+    QgsCoordinateTransformContext,
     QgsLineString,
     QgsPolygon,
     QgsFeature,
@@ -20,7 +21,6 @@ from qgis.core import (
     QgsGeometry,
     QgsPoint,
     QgsPointXY,
-    QgsProject,
     QgsVectorLayer,
 )
 
@@ -198,10 +198,15 @@ def vector_fields() -> QgsFields:
     return fields
 
 
-def vector_transform(crs: QgsCoordinateReferenceSystem) -> QgsCoordinateTransform:
-    return QgsCoordinateTransform(
-        QgsCoordinateReferenceSystem(VECTOR_SOURCE_CRS), crs, QgsProject.instance()
-    )
+def vector_transform(crs: QgsCoordinateReferenceSystem, transform_context=None) -> QgsCoordinateTransform:
+    """Transform from EUREF89 latitude and longitude to `crs`.
+
+    Pass the processing context's transformContext(): the algorithm may run
+    in a background thread or without a project (qgis_process).
+    """
+    if transform_context is None:
+        transform_context = QgsCoordinateTransformContext()
+    return QgsCoordinateTransform(QgsCoordinateReferenceSystem(VECTOR_SOURCE_CRS), crs, transform_context)
 
 
 def _projected(transform: QgsCoordinateTransform, x: float, y: float, z: float) -> QgsPoint:

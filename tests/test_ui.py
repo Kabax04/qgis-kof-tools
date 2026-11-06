@@ -28,7 +28,7 @@ class FakeMessageBar:
     def __init__(self):
         self.messages = []
 
-    def pushMessage(self, title, text, *args, level=Qgis.MessageLevel.Info):  # noqa: N802
+    def pushMessage(self, title, text, *args, level=Qgis.MessageLevel.Info, duration=-1):  # noqa: N802
         self.messages.append((text, args, level))
 
 
@@ -49,7 +49,11 @@ def processing_ready(qgis_app):
     provider = KofProvider()
     QgsApplication.processingRegistry().addProvider(provider)
     yield
-    QgsApplication.processingRegistry().removeProvider(provider)
+    # By id: a test may have replaced the provider.
+    registry = QgsApplication.processingRegistry()
+    current = registry.providerById("kof")
+    if current is not None:
+        registry.removeProvider(current)
 
 
 @pytest.fixture
@@ -148,3 +152,51 @@ def test_drop_med_linjer_laster_fire_lag(project, tmp_path):
     assert layers["linjer (lines)"].featureCount() == 9
     assert layers["linjer (polygons)"].featureCount() == 1
     assert layers["linjer (lines)"].crs().authid() == "EPSG:25832"
+
+
+class FakePluginIface(FakeIface):
+    def mainWindow(self):  # noqa: N802
+        return None
+
+    def addPluginToVectorMenu(self, *args):  # noqa: N802
+        pass
+
+    def addToolBarIcon(self, *args):  # noqa: N802
+        pass
+
+    def registerCustomDropHandler(self, *args):  # noqa: N802
+        pass
+
+    def removePluginVectorMenu(self, *args):  # noqa: N802
+        pass
+
+    def removeToolBarIcon(self, *args):  # noqa: N802
+        pass
+
+    def unregisterCustomDropHandler(self, *args):  # noqa: N802
+        pass
+
+
+@pytest.mark.parametrize("old_plugin_active", [False, True])
+def test_advarsel_om_gamle_kof_import(monkeypatch, old_plugin_active):
+    import qgis.utils
+
+    from kof_tools.plugin import KofToolsPlugin
+
+    monkeypatch.setattr(qgis.utils, "active_plugins", ["kof_import"] if old_plugin_active else [])
+    # Other tests may have registered a provider with the same id.
+    registry = QgsApplication.processingRegistry()
+    existing = registry.providerById("kof")
+    if existing is not None:
+        registry.removeProvider(existing)
+    iface = FakePluginIface()
+    plugin = KofToolsPlugin(iface)
+    plugin.initGui()
+    try:
+        texts = [text for text, _, _ in iface.bar.messages]
+        assert any("KOF Import" in t for t in texts) == old_plugin_active
+        assert registry.providerById("kof") is not None
+    finally:
+        plugin.unload()
+        if existing is not None:
+            registry.addProvider(KofProvider())

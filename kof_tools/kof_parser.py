@@ -126,8 +126,9 @@ def parse_lines(lines: Iterable[str]) -> KofResult:
     result = KofResult()
     tracker = LineTracker(result.warnings)
     vectors = VectorReader(result.warnings)
-    # Line numbers of points read by _parse_point_tokens.
+    # Line numbers of points read by _parse_point_tokens, and of unknown records by type.
     irregular: List[int] = []
+    unknown: dict = {}
     for line_no, raw in enumerate(lines, start=1):
         line = raw.rstrip()
         stripped = line.strip()
@@ -200,9 +201,19 @@ def parse_lines(lines: Iterable[str]) -> KofResult:
         elif record in VECTOR_RECORDS:
             vectors.record(record, line.strip(), line_no)
         else:
+            unknown.setdefault(record, []).append(line_no)
+    # One warning per unknown record type, so a file with thousands of
+    # observation records does not drown the other warnings.
+    for record, line_nos in unknown.items():
+        if len(line_nos) == 1:
             result.warnings.append(tr(
                 "Line {line_no}: unknown record type {record}, ignored",
-                line_no=line_no, record=repr(record),
+                line_no=line_nos[0], record=repr(record),
+            ))
+        else:
+            result.warnings.append(tr(
+                "{count} lines with unknown record type {record} ignored, first at line {line_no}",
+                count=len(line_nos), record=repr(record), line_no=line_nos[0],
             ))
     if irregular:
         result.warnings.append(tr(

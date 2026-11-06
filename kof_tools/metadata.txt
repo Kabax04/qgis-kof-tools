@@ -4,10 +4,18 @@ qgisMinimumVersion=3.22
 qgisMaximumVersion=4.99
 description=Import KOF survey files (the Norwegian coordinate file format) as points, lines and polygons, and export point, line and polygon layers to KOF.
 about=KOF is the coordinate file format used by Norwegian surveying instruments and software (Norkart KOF specification 2.00). The plugin reads points (05 records), lines and polygons (09 blocks), GNSS vectors (42/43 records) and the file header, detects the coordinate reference system (EUREF89 UTM and NTM, NGO1948, ED50, WGS84 UTM and more) and checks the axis order. Repeated measurements of the same point can be merged into mean points with standard deviations. Point, line and polygon layers can be exported to KOF files, with the coordinate system code in the header. Use it from Vector > KOF Tools, the Processing toolbox, or by dragging a .kof file onto the map. The user interface is available in English and Norwegian.
-version=1.4.1
+version=1.5.0
 author=Jonas Bratland
 email=qgis@jonasbratland.com
-changelog=1.4.1
+changelog=1.5.0
+    - Repeated measurements are only merged when the heights agree within 10 cm by default, so the lid and bottom of a manhole stay apart
+    - Grouping of repeated measurements is much faster on long surveys and can be cancelled
+    - Export numbers points with an empty name and uses Z when the height is empty; numbers already used as names are skipped
+    - '!' in point names and codes is replaced on export, so the points are not lost when the file is read again
+    - Warns when the old KOF Import plugin is still installed
+    - Many lines of the same unknown record type give one warning
+    - Files with only GNSS vectors in western Norway or Svalbard get the right UTM zone
+    1.4.1
     - Points with irregular columns are no longer misread: an ambiguous code and coordinates are reported instead of guessed, and a warning says how many points were read word by word
     - Files without the blank first column, or indented further, are read in the right columns, so point names and codes are no longer cut short
     - Arcs (09 93) from the import are exported as 09 93 with their measured points, instead of hundreds of numbered vertices
