@@ -16,6 +16,7 @@ Entries before 1.0.0 are in Norwegian.
 ### Fixed
 - Files from old DOS programs in CP865 or CP850 are read with the right æ, ø and å. Before, they were read as Windows-1252 and the letters became other characters. A file is taken as DOS only when its only non-ASCII bytes are Norwegian letters in those code pages. UTF-16 files with a byte order mark are read too.
 - Exporting a curved line or polygon warns that it is written as straight lines through points along the curve. Arcs from the import are still written back as `09 93`.
+- Exporting from QGIS 3.22 no longer gives a warning about characters Windows-1252 cannot store, with a `?` in the first line of the file. The release name in the version (`3.22.16-Białowieża`) is left out of the comment.
 - The export progress no longer goes negative for layers whose feature count is unknown.
 - The objects that style the imported layers are released once used, instead of being kept for the rest of the session.
 - Exporting a point with an empty (NULL) height field uses Z from the geometry, and a point with an empty name is numbered. Before, such points were written without height or name. Numbered points skip numbers the layer already uses as point names.

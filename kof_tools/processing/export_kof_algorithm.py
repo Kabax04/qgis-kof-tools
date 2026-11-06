@@ -36,6 +36,15 @@ else:
 ENCODINGS = (("Windows-1252", "cp1252"), ("UTF-8", "utf-8"))
 
 
+def qgis_version() -> str:
+    """The QGIS version number without the release name.
+
+    The name can have letters that Windows-1252 cannot store, such as the
+    "ł" in "3.22.16-Białowieża", which would end up as "?" in the file.
+    """
+    return Qgis.version().split("-")[0]
+
+
 def _plain(value):
     """The value, or None for NULL. Whole numbers stored as decimals lose the ".0"."""
     # QGIS 3 returns NULL as an invalid QVariant, QGIS 4 as None.
@@ -184,7 +193,7 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
         indexes["type"] = fields.lookupField("type")
 
         writer = KofWriter()
-        writer.comment(f"Exported from QGIS {Qgis.version()} with KOF Tools")
+        writer.comment(f"Exported from QGIS {qgis_version()} with KOF Tools")
         writer.header(job=source.sourceName(), epsg=epsg)
 
         request = QgsFeatureRequest().setDestinationCrs(crs, context.transformContext())
