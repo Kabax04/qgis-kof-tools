@@ -93,9 +93,35 @@ class KofResult:
             point.north, point.east = point.east, point.north
 
 
+# å, Å, ø and Ø in the DOS code pages CP865 (Nordic) and CP850 (same bytes
+# for these letters). In cp1252 they are †, an unused byte, › and an unused
+# byte, which Norwegian text does not have.
+DOS_LETTERS = {0x86, 0x8F, 0x9B, 0x9D}
+# Plus æ and Æ, which are ‘ and ’ in cp1252 and too common to go by alone.
+DOS_NORWEGIAN = DOS_LETTERS | {0x91, 0x92}
+
+
+def _looks_like_dos(data: bytes) -> bool:
+    """Whether the high bytes are only Norwegian letters in CP865/CP850."""
+    high = {b for b in data if b >= 0x80}
+    return bool(high & DOS_LETTERS) and high <= DOS_NORWEGIAN
+
+
 def read_text(path: Union[str, Path]) -> "tuple[str, str]":
-    """Read the file and return (text, encoding)."""
+    """Read the file and return (text, encoding).
+
+    UTF-8 (with or without BOM) and UTF-16 (with BOM) are recognised, and
+    files from old DOS programs in CP865. Anything else is read as cp1252.
+    """
     data = Path(path).read_bytes()
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return data.decode("utf-16"), "utf-16"
+    try:
+        return data.decode("utf-8-sig"), "utf-8-sig"
+    except UnicodeDecodeError:
+        pass
+    if _looks_like_dos(data):
+        return data.decode("cp865"), "cp865"
     for encoding in ENCODINGS:
         try:
             return data.decode(encoding), encoding

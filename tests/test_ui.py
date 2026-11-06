@@ -42,7 +42,8 @@ class FakeIface:
 
 @pytest.fixture(scope="module")
 def processing_ready(qgis_app):
-    sys.path.append(str(Path(QgsApplication.prefixPath()) / "python" / "plugins"))
+    # The Processing plugin: apps/qgis/python/plugins on Windows, /usr/share/qgis/python/plugins on Linux.
+    sys.path.append(str(Path(QgsApplication.pkgDataPath()) / "python" / "plugins"))
     from processing.core.Processing import Processing
 
     Processing.initialize()
@@ -90,6 +91,9 @@ def test_drop_kof_laster_stilte_lag(project):
     assert layers["topcon_ovingsfil"].featureCount() == 21
     assert layers["topcon_ovingsfil"].labeling().settings().fieldName == "name"
     assert layers["topcon_ovingsfil (mean)"].labeling().settings().fieldName == "names"
+    # The style post-processors are released once used.
+    from kof_tools.layer_style import StylePostProcessor
+    assert StylePostProcessor._instances == []
 
     # 102 og 108 ligger like utenfor toleransen og gir en advarsel.
     (text, details, level), = iface.bar.messages

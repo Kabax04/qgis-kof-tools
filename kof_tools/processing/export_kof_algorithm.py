@@ -58,8 +58,8 @@ def _text(value) -> str:
 def _rings(geometry):
     """(vertices, closed, hole) for each line or polygon ring in the geometry.
 
-    Curves are segmented. A polygon ring loses its closing vertex, since
-    09 96 closes it. Holes become rings of their own.
+    Curves are segmented (see is_curved). A polygon ring loses its closing
+    vertex, since 09 96 closes it. Holes become rings of their own.
     """
     polygon = geometry.type() == POLYGON_GEOMETRY
     for part in geometry.asGeometryCollection():
@@ -192,23 +192,31 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
         self._number = 0
         self._used = self._names_in_layer(source, indexes)
         holes = 0
+        curves = 0
         for current, feature in enumerate(source.getFeatures(request)):
             if feedback.isCanceled():
                 break
             geometry = feature.geometry()
             if feature.hasGeometry() and geometry.type() in (LINE_GEOMETRY, POLYGON_GEOMETRY):
+                curves += QgsWkbTypes.isCurvedType(geometry.wkbType())
                 for vertices, closed, hole in _rings(geometry):
                     holes += hole
                     self._write_line(writer, feature, indexes, vertices, closed)
             else:
                 self._write_points(writer, feature, indexes)
-            if total:
+            # featureCount() is -1 when the provider does not know it.
+            if total > 0:
                 feedback.setProgress(100 * (current + 1) / total)
 
         for warning in writer.save(path, encoding):
             feedback.pushWarning(warning)
         if holes:
             feedback.pushWarning(tr("{count} polygon hole(s) were written as separate polygons", count=holes))
+        if curves:
+            feedback.pushWarning(tr(
+                "{count} curved feature(s) were written as straight lines through points along the curve",
+                count=curves,
+            ))
         feedback.pushInfo(tr(
             "{count} points written to {path} ({encoding})",
             count=writer.points, path=path, encoding=encoding,

@@ -28,7 +28,7 @@ QGIS language setting.
   deviations and largest deviation. The height tolerance keeps points above
   each other apart, such as the lid and bottom of a manhole.
   Pairs just outside the tolerance are reported as warnings.
-- Handles Windows-1252 and UTF-8, disabled lines (`-` in column 1), `!`
+- Handles Windows-1252, UTF-8, UTF-16 and DOS files (CP865), disabled lines (`-` in column 1), `!`
   comments and files with irregular columns or tabs.
 - **Export** of point, line and polygon layers to KOF, with the coordinate
   system code in the `01` block, optional transformation, and warnings for

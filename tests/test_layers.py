@@ -240,3 +240,21 @@ def test_standard_hoydetoleranse(tmp_path, params, expected):
     results, context = run_algorithm_all({"INPUT": str(path), "INCLUDE_SINGLES": False, **params})
     layer = context.takeResultLayer(results["OUTPUT_GROUPS"])
     assert {f["names"] for f in layer.getFeatures()} == expected
+
+
+def test_filhode_og_kommentarer_i_loggen():
+    class Log(QgsProcessingFeedback):
+        def __init__(self):
+            super().__init__()
+            self.infos = []
+
+        def pushInfo(self, info):  # noqa: N802
+            self.infos.append(info)
+
+    alg = ImportKofAlgorithm().create()
+    log = Log()
+    results, ok = alg.run({"INPUT": str(DATA / "topcon_ovingsfil.kof"), "OUTPUT": "memory:"},
+                          QgsProcessingContext(), log)
+    assert ok
+    assert any(i.startswith("Comments in the file:") for i in log.infos)
+    assert any("Projeksjon" in i for i in log.infos)

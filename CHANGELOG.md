@@ -9,7 +9,15 @@ Entries before 1.0.0 are in Norwegian.
 - Grouping of repeated measurements uses a grid instead of comparing points along east only. A long north–south survey with 100 000 points takes seconds instead of minutes, the grouping runs once per import instead of three times, and it can be cancelled.
 - Many lines with the same unknown record type (e.g. `03` observations) give one warning with the count and the first line, instead of one warning per line.
 
+### Added
+- The import log shows the file header (`01`: job, date, municipality, observer) and the `00` comments, which do not end up in any layer.
+- The tests that need QGIS now run in CI, in QGIS's Docker images for 3.22, the current LTR and the latest release.
+
 ### Fixed
+- Files from old DOS programs in CP865 or CP850 are read with the right æ, ø and å. Before, they were read as Windows-1252 and the letters became other characters. A file is taken as DOS only when its only non-ASCII bytes are Norwegian letters in those code pages. UTF-16 files with a byte order mark are read too.
+- Exporting a curved line or polygon warns that it is written as straight lines through points along the curve. Arcs from the import are still written back as `09 93`.
+- The export progress no longer goes negative for layers whose feature count is unknown.
+- The objects that style the imported layers are released once used, instead of being kept for the rest of the session.
 - Exporting a point with an empty (NULL) height field uses Z from the geometry, and a point with an empty name is numbered. Before, such points were written without height or name. Numbered points skip numbers the layer already uses as point names.
 - `!` in a point name or code is replaced with `_` on export, with a warning. Before, the point was lost when the file was imported again, since `!` starts a comment in KOF.
 - A warning is shown when the old KOF Import plugin is still installed. The two plugins use the same Processing provider id, so only one of them can provide the algorithms.
