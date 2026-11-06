@@ -307,6 +307,81 @@ def test_kurver_varsles(tmp_path):
     assert any("curved feature" in w for w in feedback.warnings)
 
 
+def import_all(path):
+    alg = ImportKofAlgorithm().create()
+    context = QgsProcessingContext()
+    results, ok = alg.run({
+        "INPUT": str(path), "CRS": "EPSG:25832", "OUTPUT": "memory:",
+        "OUTPUT_LINES": "memory:", "OUTPUT_POLYGONS": "memory:",
+    }, context, QgsProcessingFeedback())
+    assert ok
+    return [context.takeResultLayer(results[key]) for key in ("OUTPUT", "OUTPUT_LINES", "OUTPUT_POLYGONS")]
+
+
+def export_layers(layers, path, **params):
+    from kof_tools.processing.export_kof_algorithm import ExportKofLayersAlgorithm
+
+    alg = ExportKofLayersAlgorithm().create()
+    feedback = CollectingFeedback()
+    results, ok = alg.run({"LAYERS": layers, "OUTPUT": str(path), **params}, QgsProcessingContext(), feedback)
+    assert ok
+    return parse_file(path), feedback
+
+
+def records(result):
+    return sorted((p.name, round(p.north, 3), round(p.east, 3)) for p in result.points)
+
+
+def lines_of(result):
+    return sorted((line.kind, line.closed, tuple(p.name for p in line.points)) for line in result.lines)
+
+
+def test_hel_import_tilbake_til_en_fil(tmp_path):
+    points, lines, polygons = import_all(DATA / "spec_linjer.kof")
+    result, feedback = export_layers([points, lines, polygons], tmp_path / "alt.kof")
+    original = parse_file(DATA / "spec_linjer.kof")
+
+    # Every point once, and the same lines, polygons and arcs.
+    assert records(result) == records(original)
+    assert lines_of(result) == lines_of(original)
+    assert result.warnings == []
+    assert feedback.warnings == []
+    in_lines = sum(len(line.points) for line in original.lines)
+    assert any(info.startswith(f"{in_lines} points that are also in lines") for info in feedback.infos)
+
+
+def test_flere_punktlag_numereres_uten_kollisjon(tmp_path):
+    first = memory_layer("PointZ", "&field=name:string", [
+        (QgsGeometry.fromWkt("PointZ (599667 6615798 1)"), ["1"]),
+        (QgsGeometry.fromWkt("PointZ (599668 6615799 2)"), [None]),
+    ])
+    second = memory_layer("PointZ", "", [
+        (QgsGeometry.fromWkt("PointZ (599669 6615800 3)"), []),
+    ])
+    result, _ = export_layers([first, second], tmp_path / "ut.kof")
+    assert [(p.name, p.height) for p in result.points] == [("1", 1), ("2", 2), ("3", 3)]
+
+
+def test_samme_navn_annen_posisjon_skrives_begge_steder(tmp_path):
+    points = memory_layer("PointZ", "&field=name:string", [
+        (QgsGeometry.fromWkt("PointZ (5 5 1)"), ["A"]),
+    ])
+    lines = memory_layer("LineStringZ", "&field=points:string", [
+        (QgsGeometry.fromWkt("LineStringZ (0 0 1, 0 10 2)"), ["A,B"]),
+    ])
+    result, _ = export_layers([points, lines], tmp_path / "ut.kof")
+    assert [p.name for p in result.points] == ["A", "A", "B"]
+
+
+def test_uten_lag_feiler(tmp_path):
+    from kof_tools.processing.export_kof_algorithm import ExportKofLayersAlgorithm
+
+    alg = ExportKofLayersAlgorithm().create()
+    with pytest.raises(QgsProcessingException):
+        alg.processAlgorithm({"LAYERS": [], "OUTPUT": str(tmp_path / "ut.kof")},
+                             QgsProcessingContext(), QgsProcessingFeedback())
+
+
 def test_qgis_versjon_uten_utgivelsesnavn(tmp_path):
     import re
 

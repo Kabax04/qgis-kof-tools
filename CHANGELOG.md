@@ -4,14 +4,15 @@ Entries before 1.0.0 are in Norwegian.
 
 ## [1.5.0] – 2026-11-06
 
+### Added
+- **Export layers to KOF…** (the *Export layers to one KOF file* algorithm) writes several layers to one KOF file, for example the point, line and polygon layers of an import. The fields are found by the names the import uses. Points that are also points of an exported line or polygon, with the same name and position, are written only in its `09` block, so a whole import comes back as one file with every point once. The menu item starts with the layers selected in the layers panel.
+- The import log shows the file header (`01`: job, date, municipality, observer) and the `00` comments, which do not end up in any layer.
+- The tests that need QGIS now run in CI, in QGIS's Docker images for 3.22, the current LTR and the latest release.
+
 ### Changed
 - Repeated measurements are only merged into a mean point when their heights differ by at most the height tolerance, which now defaults to 10 cm. Before, there was no height limit by default, so the lid and bottom of a manhole, or the top and foot of a kerb, became one mean point with a height nobody measured. Leave the height tolerance empty for the old behaviour.
 - Grouping of repeated measurements uses a grid instead of comparing points along east only. A long north–south survey with 100 000 points takes seconds instead of minutes, the grouping runs once per import instead of three times, and it can be cancelled.
 - Many lines with the same unknown record type (e.g. `03` observations) give one warning with the count and the first line, instead of one warning per line.
-
-### Added
-- The import log shows the file header (`01`: job, date, municipality, observer) and the `00` comments, which do not end up in any layer.
-- The tests that need QGIS now run in CI, in QGIS's Docker images for 3.22, the current LTR and the latest release.
 
 ### Fixed
 - Files from old DOS programs in CP865 or CP850 are read with the right æ, ø and å. Before, they were read as Windows-1252 and the letters became other characters. A file is taken as DOS only when its only non-ASCII bytes are Norwegian letters in those code pages. UTF-16 files with a byte order mark are read too.

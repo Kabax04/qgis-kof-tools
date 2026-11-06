@@ -87,6 +87,15 @@ EN = {
         "Windows-1252 suits most instruments and older software. Choose UTF-8 if the program reading the "
         "file expects it."
     ),
+    "HELP_EXPORT_LAYERS": (
+        "Writes several layers to one KOF file, for example the point, line and polygon layers of an import. "
+        "Points become 05 records, and lines and polygons 09 blocks, as in Export to KOF file.\n\n"
+        "The fields are found by the names the import uses (name, code, H, calc_code, remark, points, type); "
+        "fields a layer does not have are left out. Points that are also points of an exported line or "
+        "polygon, with the same name and position to the millimetre, are written only in its 09 block, so "
+        "they do not appear twice. The other points come first, then the lines and polygons.\n\n"
+        "The file is written in the first layer's coordinate reference system unless you select another one."
+    ),
 }
 
 
@@ -193,6 +202,21 @@ NB = {
         "Windows-1252 passer for de fleste instrumenter og eldre programmer. Velg UTF-8 hvis programmet som "
         "leser filen, forventer det."
     ),
+    "HELP_EXPORT_LAYERS": (
+        "Skriver flere lag til én KOF-fil, for eksempel punkt-, linje- og flatelaget fra en import. Punkter "
+        "blir 05-poster, og linjer og flater 09-blokker, som i Eksporter til KOF-fil.\n\n"
+        "Feltene finnes ved navnene importen bruker (name, code, H, calc_code, remark, points, type); felt "
+        "et lag ikke har, utelates. Punkter som også er punkter i en linje eller flate som eksporteres, med "
+        "samme navn og posisjon på millimeteren, skrives bare i 09-blokken, så de ikke kommer to ganger. De "
+        "andre punktene kommer først, deretter linjene og flatene.\n\n"
+        "Filen skrives i koordinatsystemet til det første laget hvis du ikke velger et annet."
+    ),
+    "Export layers to KOF…": "Eksporter lag til KOF…",
+    "Export layers to one KOF file": "Eksporter lag til én KOF-fil",
+    "Layers to export (points, lines and polygons)": "Lag som skal eksporteres (punkter, linjer og flater)",
+    "Coordinate reference system in the file (empty = the first layer's)": "Koordinatsystem i filen (tom = det første lagets)",
+    "Select at least one point, line or polygon layer.": "Velg minst ett punkt-, linje- eller flatelag.",
+    "{count} points that are also in lines or polygons were written in their 09 blocks only": "{count} punkter som også ligger i linjer eller flater, ble bare skrevet i 09-blokkene deres",
     # Parser
     "Line {line_no}: could not read point: {text}": "Linje {line_no}: kunne ikke lese punkt: {text}",
     "Line {line_no}: point {name} is missing north or east coordinate, ignored": "Linje {line_no}: punkt {name} mangler nord- eller østkoordinat, ignorert",
