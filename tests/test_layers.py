@@ -173,3 +173,49 @@ def test_swapped_axes_are_corrected():
     layer = run_algorithm({"INPUT": str(NGI / "Innmaalt_UTM32.kof")})
     point = next(layer.getFeatures()).geometry().constGet()
     assert (point.x(), point.y()) == pytest.approx((595870.665, 6644804.528))
+
+
+def test_gnss_vectors_without_crs_use_utm_zone():
+    results, context = run_algorithm_all({
+        "INPUT": str(DATA / "topcon_vektorer.kof"),
+        "OUTPUT_VECTORS": "memory:",
+    })
+    layer = context.takeResultLayer(results["OUTPUT_VECTORS"])
+    assert layer.crs().authid() == "EPSG:25832"
+    assert QgsWkbTypes.hasZ(layer.wkbType())
+    assert layer.featureCount() == 2
+
+    by_name = {f["name"]: f for f in layer.getFeatures()}
+    vector = by_name["G010–G014"]
+    assert vector["from"] == "G010"
+    assert vector["date"] == "2026-08-21"
+    assert vector["sX"] == pytest.approx(0.0021)
+    line = vector.geometry().constGet()
+    start, end = line.pointN(0), line.pointN(1)
+    # The NMBU network in Ås, UTM 32.
+    assert 597000 < start.x() < 600000
+    assert 6614000 < start.y() < 6617000
+    # The vector is short, so its length in the map is close to the 3D length.
+    length_3d = ((end.x() - start.x()) ** 2 + (end.y() - start.y()) ** 2 + (end.z() - start.z()) ** 2) ** 0.5
+    assert length_3d == pytest.approx(vector["length"], rel=1e-3)
+
+
+def test_gnss_vectors_follow_selected_crs():
+    results, context = run_algorithm_all({
+        "INPUT": str(DATA / "topcon_vektorer.kof"),
+        "CRS": "EPSG:25833",
+        "OUTPUT_VECTORS": "memory:",
+    })
+    layer = context.takeResultLayer(results["OUTPUT_VECTORS"])
+    assert layer.crs().authid() == "EPSG:25833"
+    assert layer.featureCount() == 2
+
+
+def test_skip_loading_removes_layer_from_load_list():
+    from qgis.core import QgsProcessingContext as Context
+
+    context = Context()
+    context.addLayerToLoadOnCompletion("layer", Context.LayerDetails("x", None, "OUTPUT"))
+    assert context.willLoadLayerOnCompletion("layer")
+    ImportKofAlgorithm._skip_loading(context, "layer")
+    assert not context.willLoadLayerOnCompletion("layer")

@@ -19,6 +19,7 @@ from ..crs_detect import axes_look_swapped, crs_from_sosi_code, detect_crs, dete
 from ..duplicates import find_groups, find_near_misses
 from ..i18n import tr
 from ..kof_parser import parse_file
+from ..kof_vectors import ecef_to_geodetic, utm_epsg
 from ..layer_builder import (
     LINE_WKB_TYPE,
     POINT_WKB_TYPE,
@@ -29,6 +30,9 @@ from ..layer_builder import (
     line_fields,
     point_features,
     point_fields,
+    vector_features,
+    vector_fields,
+    vector_transform,
 )
 from ..layer_style import (
     StylePostProcessor,
@@ -36,6 +40,7 @@ from ..layer_style import (
     style_lines,
     style_points,
     style_polygons,
+    style_vectors,
 )
 
 # QGIS 3.36 moved these enums to Qgis. QGIS 4 (Qt6) only has the scoped names.
@@ -65,6 +70,7 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
     OUTPUT_GROUPS = "OUTPUT_GROUPS"
     OUTPUT_LINES = "OUTPUT_LINES"
     OUTPUT_POLYGONS = "OUTPUT_POLYGONS"
+    OUTPUT_VECTORS = "OUTPUT_VECTORS"
 
     def name(self):
         return "importkof"
@@ -121,6 +127,7 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
             (self.OUTPUT_GROUPS, tr("Mean of repeated measurements"), VECTOR_POINT),
             (self.OUTPUT_LINES, tr("Lines (09 blocks)"), VECTOR_LINE),
             (self.OUTPUT_POLYGONS, tr("Polygons (closed with 09 96)"), VECTOR_POLYGON),
+            (self.OUTPUT_VECTORS, tr("GNSS vectors (42/43 records)"), VECTOR_LINE),
         ):
             self.addParameter(
                 QgsProcessingParameterFeatureSink(
@@ -157,7 +164,13 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
 
         outputs = {self.OUTPUT: dest_id}
         stem = Path(path).stem
-        self._configure_output(context, dest_id, stem, style_points)
+        # A file with only GNSS vectors gives no points, so the empty point and
+        # mean layers are not added to the project.
+        vectors_only = bool(result.vectors) and not result.points
+        if vectors_only:
+            self._skip_loading(context, dest_id)
+        else:
+            self._configure_output(context, dest_id, stem, style_points)
         feedback.pushInfo(tr(
             "{points} points imported, {warnings} warnings, {disabled} lines disabled (encoding {encoding})",
             points=len(result.points), warnings=len(result.warnings),
@@ -167,8 +180,11 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
         groups_id = self._write_groups(parameters, context, feedback, result, crs)
         if groups_id is not None:
             outputs[self.OUTPUT_GROUPS] = groups_id
-            mean = tr("mean")
-            self._configure_output(context, groups_id, f"{stem} ({mean})", style_groups)
+            if vectors_only:
+                self._skip_loading(context, groups_id)
+            else:
+                mean = tr("mean")
+                self._configure_output(context, groups_id, f"{stem} ({mean})", style_groups)
 
         # Line and polygon layers are only created when the file has any, so
         # files with points only do not add empty layers to the project.
@@ -192,7 +208,39 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
                 sink.addFeature(feature, FAST_INSERT)
             outputs[key] = dest
             self._configure_output(context, dest, f"{stem} ({suffix})", style)
+
+        vectors_id = self._write_vectors(parameters, context, feedback, result, crs)
+        if vectors_id is not None:
+            outputs[self.OUTPUT_VECTORS] = vectors_id
+            suffix = tr("GNSS vectors")
+            self._configure_output(context, vectors_id, f"{stem} ({suffix})", style_vectors)
         return outputs
+
+    def _write_vectors(self, parameters, context, feedback, result, crs):
+        """Line layer with the GNSS vectors. Only created when the file has any."""
+        if not result.vectors:
+            return None
+        fields = vector_fields()
+        sink, dest_id = self.parameterAsSink(
+            parameters, self.OUTPUT_VECTORS, context, fields, LINE_WKB_TYPE, crs
+        )
+        if sink is None:
+            return None
+        transform = vector_transform(crs)
+        for feature in vector_features(result.vectors, fields, transform, result.source):
+            sink.addFeature(feature, FAST_INSERT)
+        feedback.pushInfo(tr(
+            "{count} GNSS vectors imported. The start stations are placed from the coordinates "
+            "in the 42 records, read as EUREF89; Z is the ellipsoidal height.",
+            count=len(result.vectors),
+        ))
+        return dest_id
+
+    @staticmethod
+    def _skip_loading(context, dest_id):
+        layers = context.layersToLoadOnCompletion()
+        layers.pop(dest_id, None)
+        context.setLayersToLoadOnCompletion(layers)
 
     def _crs(self, parameters, context, feedback, result):
         crs = self.parameterAsCrs(parameters, self.CRS, context)
@@ -205,6 +253,15 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
                     "Unknown coordinate system code {code} in the 01 block, ignored", code=sosi_code
                 ))
             epsg = detect_crs(result.metadata, sosi_code)
+            if epsg is None and result.vectors and not result.points:
+                epsg = vector_crs(result)
+                crs = QgsCoordinateReferenceSystem(f"EPSG:{epsg}")
+                feedback.pushInfo(tr(
+                    "No coordinate reference system in the file. The GNSS vectors are shown in "
+                    "the UTM zone of the first station: {crs}",
+                    crs=crs.authid(),
+                ))
+                return crs
             if epsg is None:
                 raise QgsProcessingException(
                     tr("No coordinate reference system found in the file. Select one manually.")
@@ -262,3 +319,10 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
             details = context.layerToLoadOnCompletionDetails(dest_id)
             details.name = name
             details.setPostProcessor(StylePostProcessor.create(style_function))
+
+
+def vector_crs(result) -> int:
+    """EPSG code of the UTM zone of the first GNSS vector's start station."""
+    v = result.vectors[0]
+    latitude, longitude, _ = ecef_to_geodetic(v.x, v.y, v.z)
+    return utm_epsg(latitude, longitude)

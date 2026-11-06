@@ -13,6 +13,10 @@ QGIS language setting.
 - **Lines and polygons** from `09` blocks: straight lines (`91`), arcs (`93`),
   splines (`92`, drawn straight), several simultaneous lines (`72`–`79` saw
   method, `82`–`89` wave method), closed polygons (`96`) and point swarms (`94`).
+- **GNSS vectors** (baselines) from post-processing software such as Topcon
+  MAGNET Tools: `42` start station (geocentric X Y Z), `43` vector, `44`
+  standard deviations and correlations, `46` date and time. They become a
+  LineStringZ layer from the start station to start + vector.
 - **Coordinate reference system** from the `01` block (all SOSI codes:
   EUREF89 UTM and NTM, NGO1948, ED50, WGS84 UTM …) or from comments such as
   `Projeksjon: EUREF89 UTM 32`, `EXPORT PROJECTION: ETRS_1989_UTM_Zone_32N`
@@ -53,7 +57,16 @@ it. The old repository address still works, as GitHub redirects it.
   toolbox, so it works in batch mode and in the graphical modeler.
 
 You get a point layer and a mean layer. Files with `09` blocks also give a
-line layer and a polygon layer.
+line layer and a polygon layer, and files with GNSS vectors a vector layer.
+
+The start stations of GNSS vectors are placed from the coordinates in the `42`
+records, read as EUREF89. These are usually approximate (they differ from
+session to session), so the vectors are placed to within a few metres, while
+`dX`, `dY`, `dZ` and `length` are exact. Z is the ellipsoidal height. `sX`–`sZ`
+are standard deviations in metres and `rXY`–`rYZ` correlations; `info` holds
+the rest of the `46` record unparsed. A file with only vectors and no
+coordinate reference system is shown in the UTM zone of the first station, so
+you can drop all the session files on the map to see the network.
 
 To export, select a point, line or polygon layer and choose **Vector → KOF Tools → Export to
 KOF…** (or the *Export to KOF file* algorithm in the Processing toolbox). The
@@ -74,6 +87,7 @@ segmented, so they come back as straight `91` lines with more vertices.
 |---|---|
 | Points | `name`, `code`, `N`, `E`, `H`, `calc_code`, `remark`, `line_no`, `source_file` |
 | Mean | `group`, `name`, `names`, `count`, `N`, `E`, `H`, `std_N`, `std_E`, `std_H`, `max_dev`, `source_file` |
+| GNSS vectors | `name`, `from`, `to`, `dX`, `dY`, `dZ`, `length`, `sX`, `sY`, `sZ`, `rXY`, `rXZ`, `rYZ`, `date`, `time`, `info`, `line_no`, `source_file` |
 | Lines / polygons | `name`, `type` (`line`, `arc`, `spline`, `polygon`), `code`, `count`, `points`, `pi`, `line_no`, `source_file` |
 
 `line_no` is the line in the KOF file. In the line layers it is the line of

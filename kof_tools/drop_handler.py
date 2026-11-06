@@ -45,6 +45,7 @@ class KofDropHandler(QgsCustomDropHandler):
             # Only created if the file has lines or polygons.
             "OUTPUT_LINES": "TEMPORARY_OUTPUT",
             "OUTPUT_POLYGONS": "TEMPORARY_OUTPUT",
+            "OUTPUT_VECTORS": "TEMPORARY_OUTPUT",
         }
         feedback = _CollectingFeedback()
         try:
@@ -75,6 +76,9 @@ def _has_crs(path):
         result = parse_file(path)
     except OSError:
         # The algorithm reports the error.
+        return True
+    if result.vectors and not result.points:
+        # The algorithm picks a UTM zone from the vectors.
         return True
     sosi_code = result.header.crs_code if result.header else None
     return detect_crs(result.metadata, sosi_code) is not None

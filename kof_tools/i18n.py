@@ -38,7 +38,7 @@ def _detect_language() -> str:
     return "nb" if locale in NORWEGIAN else "en"
 
 
-def tr(text: str, **values) -> str:
+def tr(text: str, /, **values) -> str:
     if language() in NORWEGIAN:
         text = NB.get(text, text)
     else:
@@ -57,7 +57,13 @@ EN = {
         "pairs up to twice the tolerance apart are reported as warnings in the log.\n\n"
         "Lines and polygons: 09 blocks with line codes (91 straight line, 92 spline, 93 arc, 72-79 and 82-89 "
         "several simultaneous lines, 96 close polygon, 99 end) produce a line layer and a polygon layer. These "
-        "layers are only created when the file contains such data."
+        "layers are only created when the file contains such data.\n\n"
+        "GNSS vectors: baselines from post-processing software (42 start station with geocentric X Y Z, "
+        "43 vector dX dY dZ, 44 standard deviations and correlations, 46 date and time) produce a line layer "
+        "from the start station to start + vector. The 42 coordinates are read as EUREF89 and are usually "
+        "only approximate, so the vectors are placed to within a few metres, while dX, dY, dZ and the "
+        "length in the fields are exact. Z is the ellipsoidal height. A file with only vectors and no "
+        "coordinate reference system is shown in the UTM zone of the first station."
     ),
     "HELP_EXPORT": (
         "Writes a point, line or polygon layer to a KOF file, with a 01 header holding the coordinate "
@@ -98,6 +104,10 @@ NB = {
     "Mean of repeated measurements": "Middel av gjentatte målinger",
     "Lines (09 blocks)": "Linjer (09-blokker)",
     "Polygons (closed with 09 96)": "Flater (lukket med 09 96)",
+    "GNSS vectors (42/43 records)": "GNSS-vektorer (42/43-poster)",
+    "GNSS vectors": "GNSS-vektorer",
+    "{count} GNSS vectors imported. The start stations are placed from the coordinates in the 42 records, read as EUREF89; Z is the ellipsoidal height.": "{count} GNSS-vektorer importert. Startstasjonene plasseres etter koordinatene i 42-postene, lest som EUREF89; Z er ellipsoidisk høyde.",
+    "No coordinate reference system in the file. The GNSS vectors are shown in the UTM zone of the first station: {crs}": "Fant ikke koordinatsystem i filen. GNSS-vektorene vises i UTM-sonen til den første stasjonen: {crs}",
     "mean": "middel",
     "lines": "linjer",
     "polygons": "flater",
@@ -121,7 +131,13 @@ NB = {
         "opptil dobbel toleranse fra hverandre, rapporteres som advarsel i loggen.\n\n"
         "Linjer og flater: 09-blokker med linjekoder (91 rett linje, 92 spline, 93 bue, 72-79 og 82-89 flere "
         "samtidige linjer, 96 lukk polygon, 99 slutt) gir et linjelag og et flatelag. Lagene lages bare når "
-        "filen har slike data."
+        "filen har slike data.\n\n"
+        "GNSS-vektorer: basislinjer fra etterprosesseringsprogrammer (42 startstasjon med geosentriske X Y Z, "
+        "43 vektor dX dY dZ, 44 standardavvik og korrelasjoner, 46 dato og tid) gir et linjelag fra "
+        "startstasjonen til start + vektor. Koordinatene i 42 leses som EUREF89 og er som regel bare "
+        "omtrentlige, så vektorene plasseres med noen meters nøyaktighet, mens dX, dY, dZ og lengden i "
+        "feltene er eksakte. Z er ellipsoidisk høyde. En fil med bare vektorer og uten koordinatsystem vises "
+        "i UTM-sonen til den første stasjonen."
     ),
     # Export
     "Export to KOF…": "Eksporter til KOF…",
@@ -167,6 +183,10 @@ NB = {
     "Line {line_no}: point {name} is missing north or east coordinate, ignored": "Linje {line_no}: punkt {name} mangler nord- eller østkoordinat, ignorert",
     "Line {line_no}: unknown record type {record}, ignored": "Linje {line_no}: ukjent postkode {record}, ignorert",
     "Line {line_no}: radius (08 141) is not supported, drawn as a straight line": "Linje {line_no}: radius (08 141) støttes ikke, tegnes som rett linje",
+    # GNSS vectors
+    "Line {line_no}: vector (43) without a start station (42), ignored": "Linje {line_no}: vektor (43) uten startstasjon (42), ignorert",
+    "Line {line_no}: {record} record without a vector (43) before it, ignored": "Linje {line_no}: {record}-post uten vektor (43) foran, ignorert",
+    "Line {line_no}: could not read GNSS vector record: {text}": "Linje {line_no}: kunne ikke lese GNSS-vektorpost: {text}",
     # Lines
     "Line {line_no}: 09 96 (close polygon) without an active line": "Linje {line_no}: 09 96 (lukk polygon) uten aktiv linje",
     "Line {line_no}: the line was not ended with 09 99 or 96": "Linje {line_no}: linjen ble ikke avsluttet med 09 99 eller 96",

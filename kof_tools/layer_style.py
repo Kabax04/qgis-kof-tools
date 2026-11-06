@@ -59,6 +59,15 @@ def style_lines(layer) -> None:
     layer.triggerRepaint()
 
 
+def style_vectors(layer) -> None:
+    """Green lines labelled with from–to."""
+    symbol = QgsLineSymbol.createSimple({"line_color": "20,140,70", "line_width": "0.5"})
+    layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+    layer.setLabeling(_labeling("name"))
+    layer.setLabelsEnabled(True)
+    layer.triggerRepaint()
+
+
 def style_polygons(layer) -> None:
     """Semi-transparent blue fill with outline."""
     symbol = QgsFillSymbol.createSimple(
