@@ -147,11 +147,16 @@ NB = {
         "i UTM-sonen til den første stasjonen."
     ),
     "The old KOF Import plugin is still installed, and the two cannot run together. Uninstall KOF Import in Plugins → Manage and Install Plugins, then restart QGIS.": "Det gamle programtillegget KOF Import er fortsatt installert, og de to kan ikke kjøre samtidig. Avinstaller KOF Import i Programtillegg → Administrer og installer programtillegg, og start QGIS på nytt.",
+    "File header (01): job {job}, date {date}, municipality {municipality}, observer {observer}": "Filhode (01): oppdrag {job}, dato {date}, kommune {municipality}, observatør {observer}",
+    "File header (01): {text}": "Filhode (01): {text}",
+    "Comments in the file:": "Kommentarer i filen:",
+    "  … and {count} more": "  … og {count} til",
     # Export
     "Export to KOF…": "Eksporter til KOF…",
     "Export to KOF file": "Eksporter til KOF-fil",
     "Layer to export (points, lines or polygons)": "Lag som skal eksporteres (punkter, linjer eller flater)",
     "Point names of lines and polygons (comma-separated field)": "Punktnavn for linjer og flater (felt med kommadelte navn)",
+    "{count} curved feature(s) were written as straight lines through points along the curve": "{count} kurvede objekt(er) ble skrevet som rette linjer gjennom punkter langs kurven",
     "{count} polygon hole(s) were written as separate polygons": "{count} hull i flater ble skrevet som egne flater",
     "{lines} lines and {polygons} polygons written as 09 blocks": "{lines} linjer og {polygons} flater skrevet som 09-blokker",
     "Point name field (empty = number the points)": "Felt for punktnavn (tom = nummerer punktene)",

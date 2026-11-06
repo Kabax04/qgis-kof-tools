@@ -15,6 +15,10 @@ changelog=1.5.0
     - Warns when the old KOF Import plugin is still installed
     - Many lines of the same unknown record type give one warning
     - Files with only GNSS vectors in western Norway or Svalbard get the right UTM zone
+    - DOS files (CP865/CP850) and UTF-16 files are read with the right letters
+    - The import log shows the file header (01) and the comments (00)
+    - Export warns when curves are written as straight lines
+    - Exporting from QGIS 3.22 no longer writes a '?' in the first line of the file
     1.4.1
     - Points with irregular columns are no longer misread: an ambiguous code and coordinates are reported instead of guessed, and a warning says how many points were read word by word
     - Files without the blank first column, or indented further, are read in the right columns, so point names and codes are no longer cut short

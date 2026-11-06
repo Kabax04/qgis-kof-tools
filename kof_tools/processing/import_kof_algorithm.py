@@ -141,6 +141,7 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
         result = parse_file(path)
         for warning in result.warnings:
             feedback.pushWarning(warning)
+        self._log_header(feedback, result)
 
         crs = self._crs(parameters, context, feedback, result)
         epsg = crs.postgisSrid()
@@ -236,6 +237,28 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
             count=len(result.vectors),
         ))
         return dest_id
+
+    # At most this many 00 comments are listed in the log.
+    MAX_COMMENTS = 20
+
+    def _log_header(self, feedback, result):
+        """The 01 header and the 00 comments, which do not end up in any layer."""
+        header = result.header
+        if header is not None:
+            feedback.pushInfo(tr(
+                "File header (01): job {job}, date {date}, municipality {municipality}, observer {observer}",
+                job=header.job or "-", date=header.date or "-",
+                municipality=header.municipality if header.municipality is not None else "-",
+                observer=header.observer or "-",
+            ))
+        elif result.headers:
+            feedback.pushInfo(tr("File header (01): {text}", text=result.headers[-1]))
+        if result.comments:
+            feedback.pushInfo(tr("Comments in the file:"))
+            for comment in result.comments[:self.MAX_COMMENTS]:
+                feedback.pushInfo(f"  {comment}")
+            if len(result.comments) > self.MAX_COMMENTS:
+                feedback.pushInfo(tr("  … and {count} more", count=len(result.comments) - self.MAX_COMMENTS))
 
     @staticmethod
     def _skip_loading(context, dest_id):

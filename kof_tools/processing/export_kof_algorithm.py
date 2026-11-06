@@ -36,6 +36,15 @@ else:
 ENCODINGS = (("Windows-1252", "cp1252"), ("UTF-8", "utf-8"))
 
 
+def qgis_version() -> str:
+    """The QGIS version number without the release name.
+
+    The name can have letters that Windows-1252 cannot store, such as the
+    "ł" in "3.22.16-Białowieża", which would end up as "?" in the file.
+    """
+    return Qgis.version().split("-")[0]
+
+
 def _plain(value):
     """The value, or None for NULL. Whole numbers stored as decimals lose the ".0"."""
     # QGIS 3 returns NULL as an invalid QVariant, QGIS 4 as None.
@@ -58,8 +67,8 @@ def _text(value) -> str:
 def _rings(geometry):
     """(vertices, closed, hole) for each line or polygon ring in the geometry.
 
-    Curves are segmented. A polygon ring loses its closing vertex, since
-    09 96 closes it. Holes become rings of their own.
+    Curves are segmented (see is_curved). A polygon ring loses its closing
+    vertex, since 09 96 closes it. Holes become rings of their own.
     """
     polygon = geometry.type() == POLYGON_GEOMETRY
     for part in geometry.asGeometryCollection():
@@ -184,7 +193,7 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
         indexes["type"] = fields.lookupField("type")
 
         writer = KofWriter()
-        writer.comment(f"Exported from QGIS {Qgis.version()} with KOF Tools")
+        writer.comment(f"Exported from QGIS {qgis_version()} with KOF Tools")
         writer.header(job=source.sourceName(), epsg=epsg)
 
         request = QgsFeatureRequest().setDestinationCrs(crs, context.transformContext())
@@ -192,23 +201,31 @@ class ExportKofAlgorithm(QgsProcessingAlgorithm):
         self._number = 0
         self._used = self._names_in_layer(source, indexes)
         holes = 0
+        curves = 0
         for current, feature in enumerate(source.getFeatures(request)):
             if feedback.isCanceled():
                 break
             geometry = feature.geometry()
             if feature.hasGeometry() and geometry.type() in (LINE_GEOMETRY, POLYGON_GEOMETRY):
+                curves += QgsWkbTypes.isCurvedType(geometry.wkbType())
                 for vertices, closed, hole in _rings(geometry):
                     holes += hole
                     self._write_line(writer, feature, indexes, vertices, closed)
             else:
                 self._write_points(writer, feature, indexes)
-            if total:
+            # featureCount() is -1 when the provider does not know it.
+            if total > 0:
                 feedback.setProgress(100 * (current + 1) / total)
 
         for warning in writer.save(path, encoding):
             feedback.pushWarning(warning)
         if holes:
             feedback.pushWarning(tr("{count} polygon hole(s) were written as separate polygons", count=holes))
+        if curves:
+            feedback.pushWarning(tr(
+                "{count} curved feature(s) were written as straight lines through points along the curve",
+                count=curves,
+            ))
         feedback.pushInfo(tr(
             "{count} points written to {path} ({encoding})",
             count=writer.points, path=path, encoding=encoding,

@@ -295,3 +295,23 @@ def test_utropstegn_i_navn_rapporteres(tmp_path):
     result, feedback = export_kof(layer, tmp_path / "ut.kof")
     assert [p.name for p in result.points] == ["Ab_c"]
     assert any("'!'" in w for w in feedback.warnings)
+
+
+def test_kurver_varsles(tmp_path):
+    layer = memory_layer("CompoundCurveZ", "&field=code:string", [
+        (QgsGeometry.fromWkt("CircularStringZ (0 0 1, 10 10 2, 20 0 3)"), ["VEG"]),
+    ])
+    result, feedback = export_kof(layer, tmp_path / "ut.kof")
+    (line,) = result.lines
+    assert len(line.points) > 3
+    assert any("curved feature" in w for w in feedback.warnings)
+
+
+def test_qgis_versjon_uten_utgivelsesnavn(tmp_path):
+    import re
+
+    layer = memory_layer("PointZ", "", [(QgsGeometry.fromWkt("PointZ (599667 6615798 1)"), [])])
+    result, feedback = export_kof(layer, tmp_path / "ut.kof")
+    # The release name may have letters cp1252 cannot store, e.g. "3.22.16-Białowieża".
+    assert re.fullmatch(r"Exported from QGIS \d+\.\d+\.\d+ with KOF Tools", result.comments[0])
+    assert feedback.warnings == []

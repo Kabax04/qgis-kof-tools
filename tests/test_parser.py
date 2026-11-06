@@ -234,3 +234,39 @@ def test_mange_ukjente_poster_gir_en_advarsel_per_type():
         "500 lines with unknown record type '03' ignored, first at line 1",
         "Line 501: unknown record type '77', ignored",
     ]
+
+
+# Encodings. The point line is the same in all of them.
+
+NORSK = " 00 Målt på Øvre Ærø, Åsen"
+PUNKT = " 05 Å1            KUM      6615798.981  599667.952   98.848"
+
+
+@pytest.mark.parametrize("encoding, expected", [
+    ("utf-8", "utf-8-sig"),
+    ("utf-8-sig", "utf-8-sig"),
+    ("cp1252", "cp1252"),
+    ("cp865", "cp865"),
+    ("cp850", "cp865"),  # the same bytes for æøå
+    ("utf-16", "utf-16"),
+])
+def test_tegnkoding(tmp_path, encoding, expected):
+    from kof_tools.kof_parser import parse_file
+
+    path = tmp_path / "f.kof"
+    path.write_bytes("\r\n".join([NORSK, PUNKT]).encode(encoding))
+    result = parse_file(path)
+    assert result.encoding == expected
+    assert result.comments == [NORSK[4:]]
+    assert [p.name for p in result.points] == ["Å1"]
+
+
+def test_cp1252_med_anforselstegn_er_ikke_dos(tmp_path):
+    from kof_tools.kof_parser import parse_file
+
+    # ‘ and ’ are æ and Æ in CP865, but alone they are not enough to switch.
+    path = tmp_path / "f.kof"
+    path.write_bytes(" 00 ‘Sitat’ fra oppdraget".encode("cp1252"))
+    result = parse_file(path)
+    assert result.encoding == "cp1252"
+    assert result.comments == ["‘Sitat’ fra oppdraget"]

@@ -80,7 +80,8 @@ def style_polygons(layer) -> None:
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     """Styles a layer when Processing loads it into the project."""
 
-    # Processing does not take ownership of the Python object, so we keep it alive.
+    # Processing does not take ownership of the Python object, so we keep it
+    # alive until it has been used. Each instance is used once.
     _instances = []
 
     def __init__(self, style_function):
@@ -88,7 +89,12 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         self.style_function = style_function
 
     def postProcessLayer(self, layer, context, feedback):  # noqa: N802
-        self.style_function(layer)
+        try:
+            self.style_function(layer)
+        finally:
+            # Released after the call; Processing does not use it again.
+            if self in StylePostProcessor._instances:
+                StylePostProcessor._instances.remove(self)
 
     @classmethod
     def create(cls, style_function):
