@@ -2,6 +2,16 @@
 
 Entries before 1.0.0 are in Norwegian.
 
+## [1.4.0] – 2026-11-06
+
+### Added
+- Import of GNSS vectors (baselines) exported from post-processing software such as Topcon MAGNET Tools: `42` start station with geocentric X Y Z, `43` vector dX dY dZ, `44` standard deviations and correlations, and `46` date and time. They give a line layer from the start station to start + vector, with the fields `name`, `from`, `to`, `dX`, `dY`, `dZ`, `length`, `sX`, `sY`, `sZ`, `rXY`, `rXZ`, `rYZ`, `date`, `time`, `info`, `line_no` and `source_file`.
+- The `42` coordinates are read as EUREF89 and converted to latitude, longitude and ellipsoidal height before they are projected. They are usually only approximate, so the vectors are placed to within a few metres, while the vector components and length are exact.
+- A file with only vectors and no coordinate reference system is shown in the UTM zone of the first station, and dropping it on the map imports it without opening the dialog. The empty point and mean layers are not added.
+
+### Fixed
+- An unreadable `05` record with tabs no longer stops the import with an error. It is reported as a warning like other unreadable points.
+
 ## [1.3.1] – 2026-10-31
 
 ### Fixed

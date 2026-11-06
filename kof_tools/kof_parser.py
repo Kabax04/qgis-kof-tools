@@ -15,6 +15,7 @@ from typing import Iterable, List, Optional, Union
 
 from .i18n import tr
 from .kof_lines import KofLine, LineTracker
+from .kof_vectors import VECTOR_RECORDS, KofVector, VectorReader
 
 ENCODINGS = ("utf-8-sig", "cp1252")
 
@@ -73,6 +74,8 @@ class KofResult:
     points: List[KofPoint] = field(default_factory=list)
     # Lines and polygons from 09 blocks. Their points are also in `points`.
     lines: List[KofLine] = field(default_factory=list)
+    # GNSS baselines from 42/43 records, with 44 and 46 attached.
+    vectors: List[KofVector] = field(default_factory=list)
     # "Key: value" from 00 comments, e.g. {"Projeksjon": "NORWAY-EUREF89 UTM 32"}
     metadata: dict = field(default_factory=dict)
     comments: List[str] = field(default_factory=list)
@@ -117,6 +120,7 @@ _MISSING = object()
 def parse_lines(lines: Iterable[str]) -> KofResult:
     result = KofResult()
     tracker = LineTracker(result.warnings)
+    vectors = VectorReader(result.warnings)
     for line_no, raw in enumerate(lines, start=1):
         line = raw.rstrip()
         stripped = line.strip()
@@ -171,12 +175,15 @@ def parse_lines(lines: Iterable[str]) -> KofResult:
                     line_no=line_no,
                 ))
             # Other property codes do not affect the geometry.
+        elif record in VECTOR_RECORDS:
+            vectors.record(record, line.strip(), line_no)
         else:
             result.warnings.append(tr(
                 "Line {line_no}: unknown record type {record}, ignored",
                 line_no=line_no, record=repr(record),
             ))
     result.lines = tracker.finish()
+    result.vectors = vectors.vectors
     return result
 
 

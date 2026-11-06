@@ -12,6 +12,7 @@ from qgis.core import (
     Qgis,
     QgsCircularString,
     QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
     QgsLineString,
     QgsPolygon,
     QgsFeature,
@@ -20,12 +21,15 @@ from qgis.core import (
     QgsGeometry,
     QgsGeometryUtils,
     QgsPoint,
+    QgsPointXY,
+    QgsProject,
     QgsVectorLayer,
 )
 
 from .duplicates import PointGroup
 from .kof_lines import KofLine
 from .kof_parser import KofResult
+from .kof_vectors import KofVector, ecef_to_geodetic
 
 # QGIS 3.30 moved the geometry types to Qgis.WkbType. QGIS 4 (Qt6) only
 # has the scoped names.
@@ -188,6 +192,60 @@ def line_features(
             line.pi,
             line.line_no,
             source,
+        ])
+        yield feature
+
+
+# Geographic EUREF89/ETRS89. The vector coordinates are converted from
+# geocentric to latitude, longitude and height on GRS80 before QGIS projects them.
+VECTOR_SOURCE_CRS = "EPSG:4258"
+
+
+def vector_fields() -> QgsFields:
+    fields = QgsFields()
+    for name, field_type in (
+        ("name", STRING), ("from", STRING), ("to", STRING),
+        ("dX", DOUBLE), ("dY", DOUBLE), ("dZ", DOUBLE), ("length", DOUBLE),
+        ("sX", DOUBLE), ("sY", DOUBLE), ("sZ", DOUBLE),
+        ("rXY", DOUBLE), ("rXZ", DOUBLE), ("rYZ", DOUBLE),
+        ("date", STRING), ("time", STRING), ("info", STRING),
+        ("line_no", INT), ("source_file", STRING),
+    ):
+        fields.append(QgsField(name, field_type))
+    return fields
+
+
+def vector_transform(crs: QgsCoordinateReferenceSystem) -> QgsCoordinateTransform:
+    return QgsCoordinateTransform(
+        QgsCoordinateReferenceSystem(VECTOR_SOURCE_CRS), crs, QgsProject.instance()
+    )
+
+
+def _projected(transform: QgsCoordinateTransform, x: float, y: float, z: float) -> QgsPoint:
+    """Geocentric point -> point in the target CRS, with ellipsoidal height as Z."""
+    lat, lon, height = ecef_to_geodetic(x, y, z)
+    point = transform.transform(QgsPointXY(lon, lat))
+    return QgsPoint(point.x(), point.y(), height)
+
+
+def vector_features(
+    vectors: List[KofVector],
+    fields: QgsFields,
+    transform: QgsCoordinateTransform,
+    source: Optional[str] = None,
+) -> Iterator[QgsFeature]:
+    """One straight LineStringZ per GNSS vector, from the start station to start + vector."""
+    source = Path(source).name if source else None
+    for v in vectors:
+        feature = QgsFeature(fields)
+        start = _projected(transform, v.x, v.y, v.z)
+        end = _projected(transform, *v.end)
+        feature.setGeometry(QgsGeometry(QgsLineString([start, end])))
+        feature.setAttributes([
+            f"{v.from_name}–{v.to_name}", v.from_name, v.to_name,
+            v.dx, v.dy, v.dz, v.length,
+            v.sx, v.sy, v.sz, v.rxy, v.rxz, v.ryz,
+            v.date, v.time, v.info, v.line_no, source,
         ])
         yield feature
 

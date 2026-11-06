@@ -158,3 +158,10 @@ def test_01_med_ost_forst_bytter_akser():
     (p,) = result.points
     assert p.north == pytest.approx(6615798.981)
     assert p.east == pytest.approx(599667.952)
+
+
+def test_unreadable_point_with_tab_is_reported():
+    # tr() used to fail when a value was called "text".
+    result = parse_lines([" 05 x\ty"])
+    assert result.points == []
+    assert result.warnings == ["Line 1: could not read point: " + repr("05 x\ty")]
