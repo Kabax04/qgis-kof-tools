@@ -122,12 +122,15 @@ class KofWriter:
             f"{sosi if sosi is not None else '':>7} {'':>4} {UNITS_NORTH_FIRST:<12} {_clean(observer)}".rstrip()
         )
 
-    def start_line(self) -> None:
-        """Start a straight line (09 91). Add its points with point(), then call end_line()."""
+    def start_line(self, pi: int = 91) -> None:
+        """Start a line, by default straight (09 91); 93 gives a circular arc.
+
+        Add its points with point(), then call end_line().
+        """
         if self._block is not None:
             self.end_line()
         self._block = (len(self.records), self.points)
-        self.records.append(" 09 91")
+        self.records.append(f" 09 {pi}")
 
     def end_line(self, closed: bool = False) -> bool:
         """End the line with 09 99, or 09 96 to close it to a polygon.

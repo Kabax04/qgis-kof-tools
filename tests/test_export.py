@@ -223,17 +223,19 @@ def test_linjer_import_eksport_import(tmp_path):
     assert feedback.warnings == []
     assert result.warnings == []
     assert len(result.lines) == lines.featureCount() == 9
-    assert all(line.pi == 91 and not line.closed for line in result.lines)
 
-    # Straight lines keep their points. Arcs are segmented, so they get more, numbered vertices.
+    # Every line keeps its measured points. Arcs go back to 09 93, not their drawn vertices.
     original = {tuple(p.name for p in line.points): line for line in parse_file(DATA / "spec_linjer.kof").lines}
     exported = {tuple(p.name for p in line.points): line for line in result.lines}
-    straight = [names for names, line in original.items() if line.kind != "arc" and not line.closed]
-    assert len(straight) == 7
-    for names in straight:
+    open_lines = [names for names, line in original.items() if not line.closed]
+    assert len(open_lines) == 9
+    for names in open_lines:
+        assert exported[names].pi == (93 if original[names].kind == "arc" else 91)
+        assert not exported[names].closed
         assert names_and_coordinates(exported[names]) == [
             (p.name, p.code, p.north, p.east) for p in original[names].points
         ]
+    assert sum(line.kind == "arc" for line in result.lines) == 2
     assert any("09 blocks" in info for info in feedback.infos)
 
 

@@ -78,8 +78,9 @@ another one, in Windows-1252 unless you choose UTF-8.
 
 Lines are written as `09 91` … `09 99` and polygons as `09 91` … `09 96`.
 The vertices take their names from the `points` field that the import writes
-in its line layers, or are numbered. Curves (such as imported arcs) are
-segmented, so they come back as straight `91` lines with more vertices.
+in its line layers, or are numbered. Arcs from the import (`type` = `arc`)
+are written back as `09 93` with their measured points only. Other curves are
+segmented into straight `91` lines.
 
 ### Layers and fields
 

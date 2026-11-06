@@ -115,12 +115,19 @@ def parse_file(path: Union[str, Path]) -> KofResult:
 
 # Returned by _parse_point_fixed for a well-formed line without north or east.
 _MISSING = object()
+# Returned by _parse_point_tokens when the words fit more than one reading.
+_AMBIGUOUS = object()
+
+# A number after north and east larger than this is not read as a height.
+MAX_HEIGHT = 10000.0
 
 
 def parse_lines(lines: Iterable[str]) -> KofResult:
     result = KofResult()
     tracker = LineTracker(result.warnings)
     vectors = VectorReader(result.warnings)
+    # Line numbers of points read by _parse_point_tokens.
+    irregular: List[int] = []
     for line_no, raw in enumerate(lines, start=1):
         line = raw.rstrip()
         stripped = line.strip()
@@ -129,6 +136,10 @@ def parse_lines(lines: Iterable[str]) -> KofResult:
         if line.startswith("-"):
             result.disabled += 1
             continue
+        # Column 1 is blank, and the fixed columns count from there. Some
+        # files leave it out or indent more; shift the line into place.
+        if not line.startswith(" ") or line[1:2].isspace():
+            line = " " + line.lstrip()
         record = stripped[:2]
         if record == "00":
             # Free text; "!" is not a comment marker here.
@@ -143,7 +154,18 @@ def parse_lines(lines: Iterable[str]) -> KofResult:
             if header is not None:
                 result.header = header
         elif record == "05":
-            point = _parse_point(line, line_no)
+            point = _parse_point_fixed(line, line_no)
+            if point is None:
+                point = _parse_point_tokens(line, line_no)
+                if point is _AMBIGUOUS:
+                    result.warnings.append(tr(
+                        "Line {line_no}: point {name} has irregular columns, and its code and coordinates "
+                        "cannot be told apart, ignored: {text}",
+                        line_no=line_no, name=line.split()[1], text=repr(stripped),
+                    ))
+                    continue
+                if point is not None:
+                    irregular.append(line_no)
             if point is _MISSING:
                 result.warnings.append(tr(
                     "Line {line_no}: point {name} is missing north or east coordinate, ignored",
@@ -182,6 +204,12 @@ def parse_lines(lines: Iterable[str]) -> KofResult:
                 "Line {line_no}: unknown record type {record}, ignored",
                 line_no=line_no, record=repr(record),
             ))
+    if irregular:
+        result.warnings.append(tr(
+            "{count} point(s) do not follow the KOF columns and were read word by word. "
+            "Check their code and coordinates. First at line {line_no}.",
+            count=len(irregular), line_no=irregular[0],
+        ))
     result.lines = tracker.finish()
     result.vectors = vectors.vectors
     return result
@@ -223,14 +251,6 @@ def _parse_header(line: str) -> Optional[KofHeader]:
     )
 
 
-def _parse_point(line: str, line_no: int):
-    """Return a KofPoint, _MISSING or None (unreadable)."""
-    point = _parse_point_fixed(line, line_no)
-    if point is None:
-        point = _parse_point_tokens(line, line_no)
-    return point
-
-
 def _to_float(text: str) -> Optional[float]:
     try:
         return float(text)
@@ -263,6 +283,9 @@ def _parse_point_fixed(line: str, line_no: int):
     """
     if "\t" in line:
         return None
+    # The name and the code must end where their columns end.
+    if line[COL_NAME.stop:COL_NAME.stop + 1].strip() or line[COL_CODE.stop:COL_CODE.stop + 1].strip():
+        return None
     north, north_ok = _fixed_number(line, COL_NORTH)
     east, east_ok = _fixed_number(line, COL_EAST)
     height, height_ok = _fixed_number(line, COL_HEIGHT)
@@ -290,31 +313,68 @@ def _parse_point_fixed(line: str, line_no: int):
     )
 
 
-def _parse_point_tokens(line: str, line_no: int) -> Optional[KofPoint]:
-    """Fallback for files with irregular columns: read coordinates from the right.
+def _is_number(text: str) -> bool:
+    return _to_float(text) is not None
 
-    The first word is the point name. Of the words after the name, the last
-    2-3 numbers are read as N, E and optionally H; anything before them is
-    the code. Calculation code and remark are not supported here.
+
+def _parse_point_tokens(line: str, line_no: int):
+    """Fallback for files with irregular columns (tabs or shifted fields).
+
+    Returns a KofPoint, None (unreadable) or _AMBIGUOUS.
+
+    The first word is the point name. The last run of numbers holds an
+    optional numeric code, N, E, an optional H and an optional calculation
+    code; words before it are the code and words after it the remark. Every
+    way of placing N and E in the run is tried, and kept if the rest fits:
+    numbers before N must be whole (a code), at most H and a calculation
+    code may follow E, H must be below MAX_HEIGHT and the calculation code a
+    whole number of at most two digits. If several placements fit, the one
+    where N and E both have decimals wins; if that does not settle it, the
+    line is ambiguous rather than guessed.
     """
     tokens = line.split()[1:]
     if len(tokens) < 3:
         return None
     name, rest = tokens[0], tokens[1:]
-    numbers = []
-    while rest and len(numbers) < 3 and _to_float(rest[-1]) is not None:
-        numbers.insert(0, float(rest.pop()))
+    end = len(rest)
+    while end > 0 and not _is_number(rest[end - 1]):
+        end -= 1
+    start = end
+    while start > 0 and _is_number(rest[start - 1]):
+        start -= 1
+    numbers = rest[start:end]
     if len(numbers) < 2:
         return None
-    if len(numbers) == 2:
-        north, east, height = numbers[0], numbers[1], None
-    else:
-        north, east, height = numbers
+
+    readings = []
+    for i in range(len(numbers) - 1):
+        codes, after = numbers[:i], numbers[i + 2:]
+        if not all(t.isdigit() for t in codes) or len(after) > 2:
+            continue
+        height = float(after[0]) if after else None
+        if height is not None and abs(height) >= MAX_HEIGHT:
+            continue
+        bk = None
+        if len(after) == 2:
+            if not (after[1].isdigit() and len(after[1]) <= 2):
+                continue
+            bk = int(after[1])
+        readings.append((i, codes, height, bk))
+    if len(readings) > 1:
+        with_decimals = [r for r in readings if "." in numbers[r[0]] and "." in numbers[r[0] + 1]]
+        if len(with_decimals) != 1:
+            return _AMBIGUOUS
+        readings = with_decimals
+    if not readings:
+        return None
+    (i, codes, height, bk), = readings
     return KofPoint(
         name=name,
-        code=" ".join(rest),
-        north=north,
-        east=east,
+        code=" ".join(rest[:start] + codes),
+        north=float(numbers[i]),
+        east=float(numbers[i + 1]),
         height=height,
         line_no=line_no,
+        bk=bk,
+        remark=" ".join(rest[end:]),
     )

@@ -69,7 +69,7 @@ def test_unreadable_vector_record():
 
 def test_points_and_vectors_in_one_file():
     result = parse_lines([
-        " 05 100      1000   6615798.981 599667.952   98.848",
+        " 05 100        1000     6615798.981  599667.952   98.848",
         " 42 A   3172256.5739  603379.5253 5482036.1217  0.000",
         " 43 B   1.0 2.0 3.0  0.000",
     ])

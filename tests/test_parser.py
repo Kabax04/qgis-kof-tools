@@ -165,3 +165,64 @@ def test_unreadable_point_with_tab_is_reported():
     result = parse_lines([" 05 x\ty"])
     assert result.points == []
     assert result.warnings == ["Line 1: could not read point: " + repr("05 x\ty")]
+
+
+# Points that do not follow the columns are read word by word, without guessing.
+
+IRREGULAR = "do not follow the KOF columns"
+
+
+@pytest.mark.parametrize("line, expected", [
+    # Numeric code and no height: the code must not become north.
+    (" 05 100\t2000 6615798.981 599667.952", ("100", "2000", 6615798.981, 599667.952, None, None, "")),
+    # Numeric code, height and calculation code.
+    ("05 100 2000 6615798.981 599667.952 98.848 32", ("100", "2000", 6615798.981, 599667.952, 98.848, 32, "")),
+    # Remark after the numbers.
+    (" 05 P1\t6615798.981\t599667.952\t98.848\tsjekk kum",
+     ("P1", "", 6615798.981, 599667.952, 98.848, None, "sjekk kum")),
+    # Text code and local coordinates with decimals.
+    (" 05 P2 KUM 1000.000 2000.000 50.000", ("P2", "KUM", 1000.0, 2000.0, 50.0, None, "")),
+])
+def test_uregelmessige_kolonner(line, expected):
+    result = parse_lines([line])
+    (p,) = result.points
+    assert (p.name, p.code, p.north, p.east, p.height, p.bk, p.remark) == pytest.approx(expected)
+    (warning,) = result.warnings
+    assert warning.startswith("1 point(s) " + IRREGULAR)
+
+
+def test_tvetydig_punkt_hoppes_over_med_advarsel():
+    # "code N E" and "N E H" both fit when no number has decimals.
+    result = parse_lines([" 05 P1\t1000 2000 50"])
+    assert result.points == []
+    (warning,) = result.warnings
+    assert warning.startswith("Line 1: point P1 has irregular columns")
+
+
+def test_advarsel_om_uregelmessige_kolonner_samles():
+    result = parse_lines([
+        " 05 P1                  6615798.981  599667.952   98.848",
+        " 05 P2\t6615798.981\t599667.952",
+        " 05 P3\t6615798.981\t599667.952",
+    ])
+    assert len(result.points) == 3
+    assert result.warnings == ["2 point(s) " + IRREGULAR + " and were read word by word. "
+                               "Check their code and coordinates. First at line 2."]
+
+
+# Column 1 is blank in the specification, but not in every file.
+
+STANDARD = " 05 100        2000      6615798.981  599667.952   98.848 32 merk"
+
+
+@pytest.mark.parametrize("line", [STANDARD[1:], "   " + STANDARD[1:], "\t" + STANDARD[1:]])
+def test_postkode_uten_blank_forste_kolonne(line):
+    result = parse_lines([line])
+    (p,) = result.points
+    assert (p.name, p.code, p.height, p.bk, p.remark) == ("100", "2000", pytest.approx(98.848), 32, "merk")
+    assert result.warnings == []
+
+
+def test_01_hode_uten_blank_forste_kolonne():
+    header = parse_lines(["01 Oppdrag      06112026   2      22      $11100000000 JB"]).header
+    assert (header.job, header.crs_code, header.observer) == ("Oppdrag", 22, "JB")
