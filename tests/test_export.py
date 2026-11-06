@@ -275,3 +275,23 @@ def test_flate_med_hull_og_bue(tmp_path):
     assert len(hole.points) == 3
     assert len(circle.points) > 8
     assert "1 polygon hole(s) were written as separate polygons" in feedback.warnings
+
+
+def test_tomt_navn_og_hoyde_bruker_nummer_og_z(tmp_path):
+    layer = memory_layer("PointZ", "&field=name:string&field=H:double", [
+        (QgsGeometry.fromWkt("PointZ (599667.952 6615798.981 12.3)"), [None, None]),
+        (QgsGeometry.fromWkt("PointZ (599668 6615799 13)"), ["", 14.0]),
+        # The numbers must not take names the layer already has.
+        (QgsGeometry.fromWkt("PointZ (599669 6615800 15)"), ["1", None]),
+    ])
+    result, _ = export_kof(layer, tmp_path / "ut.kof")
+    assert [(p.name, p.height) for p in result.points] == [("2", 12.3), ("3", 14.0), ("1", 15.0)]
+
+
+def test_utropstegn_i_navn_rapporteres(tmp_path):
+    layer = memory_layer("PointZ", "&field=name:string", [
+        (QgsGeometry.fromWkt("PointZ (599667.952 6615798.981 12.3)"), ["Ab!c"]),
+    ])
+    result, feedback = export_kof(layer, tmp_path / "ut.kof")
+    assert [p.name for p in result.points] == ["Ab_c"]
+    assert any("'!'" in w for w in feedback.warnings)

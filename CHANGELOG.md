@@ -2,6 +2,21 @@
 
 Entries before 1.0.0 are in Norwegian.
 
+## [1.5.0] – 2026-11-06
+
+### Changed
+- Repeated measurements are only merged into a mean point when their heights differ by at most the height tolerance, which now defaults to 10 cm. Before, there was no height limit by default, so the lid and bottom of a manhole, or the top and foot of a kerb, became one mean point with a height nobody measured. Leave the height tolerance empty for the old behaviour.
+- Grouping of repeated measurements uses a grid instead of comparing points along east only. A long north–south survey with 100 000 points takes seconds instead of minutes, the grouping runs once per import instead of three times, and it can be cancelled.
+- Many lines with the same unknown record type (e.g. `03` observations) give one warning with the count and the first line, instead of one warning per line.
+
+### Fixed
+- Exporting a point with an empty (NULL) height field uses Z from the geometry, and a point with an empty name is numbered. Before, such points were written without height or name. Numbered points skip numbers the layer already uses as point names.
+- `!` in a point name or code is replaced with `_` on export, with a warning. Before, the point was lost when the file was imported again, since `!` starts a comment in KOF.
+- A warning is shown when the old KOF Import plugin is still installed. The two plugins use the same Processing provider id, so only one of them can provide the algorithms.
+- A file with only GNSS vectors in western Norway (zone 32V) or on Svalbard is shown in the UTM zone used there, e.g. 32 for Bergen and 33 for Ny-Ålesund.
+- The GNSS vector transformation uses the processing context instead of the current project, so it works from `qgis_process` and in background threads.
+- The tests no longer stop when `git` is missing, as in QGIS's own Python; the release tests are skipped instead.
+
 ## [1.4.1] – 2026-11-06
 
 ### Fixed

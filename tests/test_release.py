@@ -1,11 +1,16 @@
 """The release script, run against the current commit."""
 
 import importlib.util
+import shutil
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
 import pytest
+
+# The release script reads from git. QGIS's Python (python-qgis.bat) often has no git in PATH.
+if shutil.which("git") is None:
+    pytest.skip("git is not available", allow_module_level=True)
 
 SCRIPT = Path(__file__).parent.parent / "scripts" / "release.py"
 spec = importlib.util.spec_from_file_location("release", SCRIPT)

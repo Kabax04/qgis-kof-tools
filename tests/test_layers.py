@@ -219,3 +219,24 @@ def test_skip_loading_removes_layer_from_load_list():
     assert context.willLoadLayerOnCompletion("layer")
     ImportKofAlgorithm._skip_loading(context, "layer")
     assert not context.willLoadLayerOnCompletion("layer")
+
+
+KUM = [
+    " 05 lokk          KUM      6600000.000  600000.000  100.000",
+    " 05 bunn          KUM      6600000.010  600000.000   97.500",
+    " 05 lokk2         KUM      6600000.000  600000.010  100.020",
+]
+
+
+@pytest.mark.parametrize("params, expected", [
+    # The default height tolerance (10 cm) keeps the bottom of the manhole apart.
+    ({}, {"lokk,lokk2"}),
+    # None (not set in the dialog) means no height limit.
+    ({"HEIGHT_TOLERANCE": None}, {"lokk,bunn,lokk2"}),
+])
+def test_standard_hoydetoleranse(tmp_path, params, expected):
+    path = tmp_path / "kum.kof"
+    path.write_text("\n".join([" 00 EPSG: 25832"] + KUM) + "\n", encoding="utf-8")
+    results, context = run_algorithm_all({"INPUT": str(path), "INCLUDE_SINGLES": False, **params})
+    layer = context.takeResultLayer(results["OUTPUT_GROUPS"])
+    assert {f["names"] for f in layer.getFeatures()} == expected

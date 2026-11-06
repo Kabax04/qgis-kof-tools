@@ -351,3 +351,12 @@ def test_rundtur_linjer_fra_spesifikasjonen():
     assert [([point_tuple(p) for p in line.points], line.closed) for line in again.lines] == [
         ([point_tuple(p) for p in line.points], line.closed) for line in original.lines
     ]
+
+
+def test_utropstegn_i_navn_og_kode_byttes_ut():
+    writer = KofWriter()
+    writer.point("Ab!c", "K!1", 6615798.981, 599667.952, 98.848, remark="merk")
+    (p,) = reparse(writer).points
+    assert (p.name, p.code, p.height, p.remark) == ("Ab_c", "K_1", 98.848, "merk")
+    (warning,) = writer.warnings
+    assert warning.startswith("2 point name(s) or code(s) had '!'")

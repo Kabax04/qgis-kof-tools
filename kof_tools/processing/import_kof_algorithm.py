@@ -16,7 +16,7 @@ from qgis.core import (
 )
 
 from ..crs_detect import axes_look_swapped, crs_from_sosi_code, detect_crs, detect_vertical_crs
-from ..duplicates import find_groups, find_near_misses
+from ..duplicates import DEFAULT_HEIGHT_TOLERANCE, DEFAULT_TOLERANCE, find_near_misses, group_points
 from ..i18n import tr
 from ..kof_parser import parse_file
 from ..kof_vectors import ecef_to_geodetic, utm_epsg
@@ -102,7 +102,7 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterDistance(
                 self.TOLERANCE,
                 tr("Tolerance for repeated measurements (horizontal)"),
-                defaultValue=0.05,
+                defaultValue=DEFAULT_TOLERANCE,
                 parentParameterName=self.CRS,
                 minValue=0.0,
             )
@@ -112,6 +112,7 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
                 self.HEIGHT_TOLERANCE,
                 tr("Height tolerance (empty = no limit)"),
                 type=NumberType.Double,
+                defaultValue=DEFAULT_HEIGHT_TOLERANCE,
                 optional=True,
                 minValue=0.0,
             )
@@ -226,7 +227,7 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
         )
         if sink is None:
             return None
-        transform = vector_transform(crs)
+        transform = vector_transform(crs, context.transformContext())
         for feature in vector_features(result.vectors, fields, transform, result.source):
             sink.addFeature(feature, FAST_INSERT)
         feedback.pushInfo(tr(
@@ -274,24 +275,30 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
 
     def _write_groups(self, parameters, context, feedback, result, crs):
         tolerance = self.parameterAsDouble(parameters, self.TOLERANCE, context)
+        # Left out, the default applies; set to nothing (None), there is no limit.
         height_tolerance = None
-        if parameters.get(self.HEIGHT_TOLERANCE) is not None:
+        if parameters.get(self.HEIGHT_TOLERANCE, DEFAULT_HEIGHT_TOLERANCE) is not None:
             height_tolerance = self.parameterAsDouble(
                 parameters, self.HEIGHT_TOLERANCE, context
             )
         include_singles = self.parameterAsBoolean(parameters, self.INCLUDE_SINGLES, context)
 
-        repeated = find_groups(result.points, tolerance, height_tolerance)
+        groups = group_points(result.points, tolerance, height_tolerance, feedback.isCanceled)
+        repeated = [g for g in groups if len(g.members) > 1]
         feedback.pushInfo(tr(
-            "{count} groups of repeated measurements (tolerance {tolerance} m)",
+            "{count} groups of repeated measurements (tolerance {tolerance} m, height {height})",
             count=len(repeated), tolerance=tolerance,
+            height=tr("no limit") if height_tolerance is None else f"{height_tolerance} m",
         ))
         for g in repeated:
             feedback.pushInfo(tr(
                 "  {names}: largest deviation {deviation:.1f} mm",
                 names=",".join(g.names), deviation=g.max_deviation * 1000,
             ))
-        for miss in find_near_misses(result.points, tolerance, height_tolerance):
+        misses = find_near_misses(
+            result.points, tolerance, height_tolerance, groups=groups, is_canceled=feedback.isCanceled
+        )
+        for miss in misses:
             feedback.pushWarning(tr(
                 "{a} and {b} are {distance:.3f} m apart, just outside the tolerance. "
                 "Check whether they are the same point.",
@@ -304,12 +311,7 @@ class ImportKofAlgorithm(QgsProcessingAlgorithm):
         )
         if sink is None:
             return None
-        groups = (
-            find_groups(result.points, tolerance, height_tolerance, include_singles=True)
-            if include_singles
-            else repeated
-        )
-        for feature in group_features(groups, fields, result.source):
+        for feature in group_features(groups if include_singles else repeated, fields, result.source):
             sink.addFeature(feature, FAST_INSERT)
         return dest_id
 

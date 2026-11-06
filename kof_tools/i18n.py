@@ -53,7 +53,9 @@ EN = {
         "The coordinate reference system is taken from the file header (the 01 block or e.g. "
         "\"Projeksjon: EUREF89 UTM 32\"). Select one manually if the file does not state it, or to override.\n\n"
         "Repeated measurements: points within the horizontal tolerance (directly or through a chain of "
-        "neighbours) are merged into one mean point with standard deviation and largest deviation. Point "
+        "neighbours) are merged into one mean point with standard deviation and largest deviation. The height "
+        "difference must also be within the height tolerance (default 10 cm), so points above each other, "
+        "such as the lid and bottom of a manhole, are kept apart; leave it empty for no limit. Point "
         "pairs up to twice the tolerance apart are reported as warnings in the log.\n\n"
         "Lines and polygons: 09 blocks with line codes (91 straight line, 92 spline, 93 arc, 72-79 and 82-89 "
         "several simultaneous lines, 96 close polygon, 99 end) produce a line layer and a polygon layer. These "
@@ -70,8 +72,9 @@ EN = {
         "system code and north before east. Points become 05 records. Lines become 09 91 blocks ended by "
         "09 99, and polygons 09 91 blocks closed by 09 96, with one 05 record per vertex.\n\n"
         "The fields default to those of layers made by the import (name, code, H, calc_code, remark, points). "
-        "Fields the layer does not have are left out. Without a name field the points are numbered, and without "
-        "a height field the Z value of the geometry is used.\n\n"
+        "Fields the layer does not have are left out. Points without a name (no name field, or an empty "
+        "value) are numbered with numbers the layer does not already use as names, and points without a height "
+        "value take the Z value of the geometry.\n\n"
         "Lines and polygons: the vertices take their names from the comma-separated point names field when it "
         "has one name per vertex, otherwise they are numbered. Heights come from Z, and the code applies to "
         "every vertex. Arcs from the import are written back as 09 93 with their measured points. Other "
@@ -119,7 +122,8 @@ NB = {
     "Heights are in NN2000": "Høyder er oppgitt i NN2000",
     "The coordinates look like east before north for {crs}. North and east have been swapped.": "Koordinatene ser ut til å stå med øst før nord for {crs}. Nord og øst er byttet.",
     "{points} points imported, {warnings} warnings, {disabled} lines disabled (encoding {encoding})": "{points} punkter importert, {warnings} advarsler, {disabled} linjer satt ut av funksjon (tegnkoding {encoding})",
-    "{count} groups of repeated measurements (tolerance {tolerance} m)": "{count} grupper av gjentatte målinger (toleranse {tolerance} m)",
+    "{count} groups of repeated measurements (tolerance {tolerance} m, height {height})": "{count} grupper av gjentatte målinger (toleranse {tolerance} m, høyde {height})",
+    "no limit": "ingen krav",
     "  {names}: largest deviation {deviation:.1f} mm": "  {names}: største avvik {deviation:.1f} mm",
     "{a} and {b} are {distance:.3f} m apart, just outside the tolerance. Check whether they are the same point.": "{a} og {b} ligger {distance:.3f} m fra hverandre, litt utenfor toleransen. Sjekk om de er samme punkt.",
     "{lines} lines and {polygons} polygons from 09 blocks": "{lines} linjer og {polygons} flater fra 09-blokker",
@@ -128,7 +132,9 @@ NB = {
         "Koordinatsystemet hentes fra filhodet (01-blokken eller f.eks. «Projeksjon: EUREF89 UTM 32»). "
         "Velg koordinatsystem manuelt hvis filen ikke oppgir det, eller for å overstyre.\n\n"
         "Gjentatte målinger: punkter som ligger innenfor toleransen horisontalt (direkte eller via en kjede "
-        "av naboer) slås sammen til ett middelpunkt med standardavvik og største avvik. Punktpar som ligger "
+        "av naboer) slås sammen til ett middelpunkt med standardavvik og største avvik. Høydeforskjellen må "
+        "også være innenfor høydetoleransen (standard 10 cm), så punkter over hverandre, som lokk og bunn i en "
+        "kum, holdes adskilt; la feltet stå tomt for ingen krav. Punktpar som ligger "
         "opptil dobbel toleranse fra hverandre, rapporteres som advarsel i loggen.\n\n"
         "Linjer og flater: 09-blokker med linjekoder (91 rett linje, 92 spline, 93 bue, 72-79 og 82-89 flere "
         "samtidige linjer, 96 lukk polygon, 99 slutt) gir et linjelag og et flatelag. Lagene lages bare når "
@@ -140,6 +146,7 @@ NB = {
         "feltene er eksakte. Z er ellipsoidisk høyde. En fil med bare vektorer og uten koordinatsystem vises "
         "i UTM-sonen til den første stasjonen."
     ),
+    "The old KOF Import plugin is still installed, and the two cannot run together. Uninstall KOF Import in Plugins → Manage and Install Plugins, then restart QGIS.": "Det gamle programtillegget KOF Import er fortsatt installert, og de to kan ikke kjøre samtidig. Avinstaller KOF Import i Programtillegg → Administrer og installer programtillegg, og start QGIS på nytt.",
     # Export
     "Export to KOF…": "Eksporter til KOF…",
     "Export to KOF file": "Eksporter til KOF-fil",
@@ -166,7 +173,8 @@ NB = {
         "og nord før øst. Punkter blir 05-poster. Linjer blir 09 91-blokker avsluttet med 09 99, og flater "
         "09 91-blokker lukket med 09 96, med én 05-post per knekkpunkt.\n\n"
         "Feltene er som standard de samme som i lag fra importen (name, code, H, calc_code, remark, points). "
-        "Felt laget ikke har, utelates. Uten navnefelt nummereres punktene, og uten høydefelt brukes "
+        "Felt laget ikke har, utelates. Punkter uten navn (uten navnefelt, eller med tom verdi) "
+        "nummereres med tall som ikke allerede er brukt som navn i laget, og punkter uten høydeverdi får "
         "Z-verdien i geometrien.\n\n"
         "Linjer og flater: knekkpunktene får navn fra feltet med kommadelte punktnavn når det har ett navn "
         "per knekkpunkt, ellers nummereres de. Høydene hentes fra Z, og koden gjelder alle knekkpunktene. "
@@ -185,6 +193,7 @@ NB = {
     "Line {line_no}: point {name} is missing north or east coordinate, ignored": "Linje {line_no}: punkt {name} mangler nord- eller østkoordinat, ignorert",
     "Line {line_no}: point {name} has irregular columns, and its code and coordinates cannot be told apart, ignored: {text}": "Linje {line_no}: punkt {name} har uregelmessige kolonner, og kode og koordinater kan ikke skilles fra hverandre, ignorert: {text}",
     "{count} point(s) do not follow the KOF columns and were read word by word. Check their code and coordinates. First at line {line_no}.": "{count} punkt(er) følger ikke KOF-kolonnene og ble lest ord for ord. Kontroller kode og koordinater. Første gang på linje {line_no}.",
+    "{count} lines with unknown record type {record} ignored, first at line {line_no}": "{count} linjer med ukjent postkode {record} ignorert, første på linje {line_no}",
     "Line {line_no}: unknown record type {record}, ignored": "Linje {line_no}: ukjent postkode {record}, ignorert",
     "Line {line_no}: radius (08 141) is not supported, drawn as a straight line": "Linje {line_no}: radius (08 141) støttes ikke, tegnes som rett linje",
     # GNSS vectors
@@ -200,6 +209,7 @@ NB = {
     # Writer
     "{count} point name(s) longer than 10 characters were shortened, e.g. {examples}": "{count} punktnavn lengre enn 10 tegn ble forkortet, f.eks. {examples}",
     "{count} code(s) longer than 8 characters were shortened, e.g. {examples}": "{count} koder lengre enn 8 tegn ble forkortet, f.eks. {examples}",
+    "{count} point name(s) or code(s) had '!', which starts a comment in KOF, and it was replaced with '_', e.g. {examples}": "{count} punktnavn eller koder hadde '!', som starter en kommentar i KOF, og det ble byttet ut med '_', f.eks. {examples}",
     "{count} point(s) without north or east coordinate were skipped, e.g. {examples}": "{count} punkt(er) uten nord- eller østkoordinat ble hoppet over, f.eks. {examples}",
     "{count} point(s) with north or east too large for the KOF columns were skipped, e.g. {examples}. Check the coordinate reference system.": "{count} punkt(er) med nord eller øst for store for KOF-kolonnene ble hoppet over, f.eks. {examples}. Sjekk koordinatsystemet.",
     "{count} height(s) too large for the KOF column were left empty, e.g. for point {examples}": "{count} høyde(r) for store for KOF-kolonnen ble stående tomme, f.eks. for punkt {examples}",
